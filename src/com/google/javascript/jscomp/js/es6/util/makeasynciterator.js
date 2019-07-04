@@ -18,12 +18,13 @@
  * @fileoverview Polyfill for for-of loops.
  */
 'require es6/symbol';
+'require es6/util/makeiterator';
 
 /**
  * Creates an iterator for the given iterable.
  *
  * @param {string|!AsyncIterable<T>|!Iterable<T>|!Iterator<T>|!Arguments<T>} iterable
- * @return {AsyncIterator<T>}
+ * @return {!AsyncIteratorIterable<T>}
  * @template T
  * @suppress {reportUnknownTypes}
  */
@@ -42,7 +43,7 @@ $jscomp.makeAsyncIterator = function(iterable) {
  *
  * @param {!Iterator<T>} iterator
  * @constructor
- * @implements {AsyncIterator<T>}
+ * @implements {AsyncIteratorIterable<T>}
  * @template T
  * @suppress {reportUnknownTypes}
  */
@@ -55,7 +56,7 @@ $jscomp.AsyncIteratorFromSyncWrapper = function(iterator) {
   };
 
   /**
-   * @return {!Iterator<T>}
+   * @return {!Iterator<!Promise<!IIterableResult<T>>>}
    */
   this[Symbol.iterator] = function() {
     return iterator;

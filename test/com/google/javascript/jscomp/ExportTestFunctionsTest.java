@@ -16,11 +16,16 @@
 package com.google.javascript.jscomp;
 
 import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /**
  * Tests for ExportTestFunctions.
  *
  */
+@RunWith(JUnit4.class)
 public final class ExportTestFunctionsTest extends CompilerTestCase {
 
   private static final String EXTERNS =
@@ -39,7 +44,8 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
   }
 
   @Override
-  protected void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     super.setUp();
     disableLineNumberCheck();
     setAcceptedLanguage(LanguageMode.ECMASCRIPT_2017);
@@ -56,6 +62,7 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
     return 1;
   }
 
+  @Test
   public void testFunctionsAreExported() {
     test(
         TEST_FUNCTIONS_WITH_NAMES,
@@ -69,6 +76,7 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
   }
 
   // Helper functions
+  @Test
   public void testBasicTestFunctionsAreExported() {
     testSame("function Foo() {function testA(){}}");
     test("function setUp() {}", "function setUp(){} google_exportSymbol('setUp',setUp)");
@@ -89,6 +97,14 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
     testSame("var testCase = {}; testCase.setUpPage = function() {}");
   }
 
+  @Test
+  public void testBasicTestFunctionsAreExported_inGoogModule() {
+    testSame("goog.module('test'); function Foo() {function testA(){}}");
+    test(
+        "goog.module('test'); function setUp() {}",
+        "goog.module('test'); function setUp(){} google_exportSymbol('setUp',setUp)");
+  }
+
   /**
    * Make sure this works for global functions declared as function expressions:
    *
@@ -100,6 +116,7 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
    *
    * This format should be supported in addition to function statements.
    */
+  @Test
   public void testFunctionExpressionsAreExported() {
     testSame("var Foo = function() {var testA = function() {}}");
     test(
@@ -124,13 +141,30 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
             + "google_exportSymbol('testBar',testBar)");
   }
 
+  @Test
+  public void testFunctionExpressionsAreExported_inGoogModule() {
+    testSame("goog.module('test'); var Foo = function() {var testA = function() {}}");
+    test(
+        "goog.module('test'); var setUp = function() {}",
+        "goog.module('test'); var setUp = function() {}; google_exportSymbol('setUp',setUp)");
+  }
+
   // https://github.com/google/closure-compiler/issues/2563
+  @Test
   public void testFunctionExpressionsInAssignAreExported() {
     test(
         "testBar = function() {};",
         "testBar = function() {}; google_exportSymbol('testBar',testBar)");
   }
 
+  @Test
+  public void testFunctionExpressionsInAssignAreExported_inGoogModule() {
+    test(
+        "goog.module('test'); testBar = function() {};",
+        "goog.module('test'); testBar = function() {}; google_exportSymbol('testBar',testBar)");
+  }
+
+  @Test
   public void testFunctionExpressionsByLetAreExported() {
     testSame("let Foo = function() {var testA = function() {}}");
     test(
@@ -145,6 +179,7 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
             "let tearDown = function() {}; ", "google_exportSymbol('tearDown', tearDown)"));
   }
 
+  @Test
   public void testFunctionExpressionsByConstAreExported() {
     testSame("const Foo = function() {var testA = function() {}}");
     test(
@@ -160,6 +195,7 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
             "const tearDown = function() {}; ", "google_exportSymbol('tearDown', tearDown)"));
   }
 
+  @Test
   public void testArrowFunctionExpressionsAreExported() {
     testSame("var Foo = ()=>{var testA = function() {}}");
     test(
@@ -173,6 +209,7 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
         lines("var tearDown = ()=>{}; ", "google_exportSymbol('tearDown', tearDown)"));
   }
 
+  @Test
   public void testFunctionAssignmentsAreExported() {
     testSame("Foo = {}; Foo.prototype.bar = function() {};");
 
@@ -215,6 +252,7 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
             + "Foo.baz.prototype.testBar);");
   }
 
+  @Test
   public void testExportTestSuite() {
     testSame("goog.testing.testSuite({'a': function() {}, 'b': function() {}});");
     test(
@@ -222,12 +260,96 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
         "goog.testing.testSuite({'a': function() {}, 'b': function() {}});");
   }
 
-  public void testMemberDefInObjLit() {
+  @Test
+  public void testExportTestSuite_whereGoogIsDefined() {
+    testSame("var goog = {}; goog.testing.testSuite({'a': function() {}, 'b': function() {}});");
+    test(
+        "var goog = {}; goog.testing.testSuite({a: function() {}, b: function() {}});",
+        "var goog = {}; goog.testing.testSuite({'a': function() {}, 'b': function() {}});");
+  }
+
+  @Test
+  public void testExportTestSuite_inGoogModule() {
+    test(
+        lines(
+            "goog.module('my.test');",
+            "const testSuite = goog.require('goog.testing.testSuite');",
+            "testSuite({a: function() {}, b: function() {}});"),
+        lines(
+            "goog.module('my.test');",
+            "const testSuite = goog.require('goog.testing.testSuite');",
+            "testSuite({'a': function() {}, 'b': function() {}});"));
+  }
+
+  @Test
+  public void testNonGoogTestingTestSuiteNotRewrittenInModule() {
+    testSame(
+        lines(
+            "goog.module('my.test');", //
+            "const testSuite = goog.require('some.other.testSuite');",
+            "testSuite({a: function() {}, b: function() {}});"));
+  }
+
+  @Test
+  public void testExportTestSuite_differentNameInGoogModule() {
+    test(
+        lines(
+            "goog.module('my.test');",
+            "const someRandomName = goog.require('goog.testing.testSuite');",
+            "someRandomName({a: function() {}, b: function() {}});"),
+        lines(
+            "goog.module('my.test');",
+            "const someRandomName = goog.require('goog.testing.testSuite');",
+            "someRandomName({'a': function() {}, 'b': function() {}});"));
+  }
+
+  @Test
+  public void testExportTestSuite_inEsModule() {
+    test(
+        lines(
+            "const testSuite = goog.require('goog.testing.testSuite');",
+            "testSuite({a: function() {}, b: function() {}});",
+            "export {};"), // Add `export {}` to make this an ES module.
+        lines(
+            "const testSuite = goog.require('goog.testing.testSuite');",
+            "testSuite({'a': function() {}, 'b': function() {}});",
+            "export {};"));
+  }
+
+  @Test
+  public void testMemberDefInObjLitInTestSuite_becomesStringKey() {
     test(
         "goog.testing.testSuite({a() {}, b() {}});",
         "goog.testing.testSuite({'a': function() {}, 'b': function() {}});");
   }
 
+  @Test
+  public void testMemberDefInObjLitInTestSuite_becomesStringKey_withSameJSDoc() {
+    test(
+        lines(
+            "goog.testing.testSuite({",
+            "  /** @suppress {checkTypes} */ a() {},",
+            "  b() {}",
+            "});"),
+        lines(
+            "goog.testing.testSuite({",
+            "  /** @suppress {checkTypes} */",
+            "  'a': function() {},",
+            "  'b': function() {}",
+            "});"));
+  }
+
+  @Test
+  public void testComputedPropInObjLitInTestSuite_doesNotChange() {
+    testSame(
+        lines(
+            "goog.testing.testSuite({",
+            "  /** @suppress {checkTypes} */ ['a']() {},",
+            "  ['b']() {}",
+            "});"));
+  }
+
+  @Test
   public void testEs6Class_testMethod() {
     test(
         "class MyTest {testFoo() {}} goog.testing.testSuite(new MyTest());",
@@ -236,6 +358,18 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
             + "goog.testing.testSuite(new MyTest());");
   }
 
+  @Test
+  public void testEs6Class_testMethod_inGoogModule() {
+    test(
+        "goog.module('test'); class MyTest {testFoo() {}} goog.testing.testSuite(new MyTest());",
+        lines(
+            "goog.module('test');",
+            "class MyTest {testFoo() {}} ",
+            "google_exportProperty(MyTest.prototype, 'testFoo', MyTest.prototype.testFoo); ",
+            "goog.testing.testSuite(new MyTest());"));
+  }
+
+  @Test
   public void testEs6Class_lifeCycleMethods() {
     test(
         "class MyTest {"
@@ -255,6 +389,7 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
   }
 
   // https://github.com/google/closure-compiler/issues/2563
+  @Test
   public void testES6ClassAssignmentsAreExported() {
     testSame("Foo = class {bar() {}}");
 
@@ -264,6 +399,7 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
             + "google_exportProperty(Foo.prototype, 'testBar', Foo.prototype.testBar);");
   }
 
+  @Test
   public void testEs6Class_testClassExpressionMethod() {
     test(
         "var MyTest=class{testFoo() {}}; goog.testing.testSuite(new MyTest());",
@@ -272,6 +408,7 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
             + "goog.testing.testSuite(new MyTest());");
   }
 
+  @Test
   public void testEs6Class_testClassExpressionByLetMethod() {
     test(
         "let MyTest=class{testFoo() {}}; goog.testing.testSuite(new MyTest());",
@@ -280,6 +417,7 @@ public final class ExportTestFunctionsTest extends CompilerTestCase {
             + "goog.testing.testSuite(new MyTest());");
   }
 
+  @Test
   public void testEs6Class_testClassExpressionByConstMethod() {
     test(
         "const MyTest=class{testFoo() {}}; goog.testing.testSuite(new MyTest());",

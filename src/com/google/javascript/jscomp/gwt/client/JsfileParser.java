@@ -17,7 +17,6 @@
 package com.google.javascript.jscomp.gwt.client;
 
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -29,18 +28,21 @@ import com.google.javascript.jscomp.BasicErrorManager;
 import com.google.javascript.jscomp.CheckLevel;
 import com.google.javascript.jscomp.Compiler;
 import com.google.javascript.jscomp.CompilerOptions;
+import com.google.javascript.jscomp.GatherModuleMetadata;
 import com.google.javascript.jscomp.JSError;
-import com.google.javascript.jscomp.ModuleMetadata;
-import com.google.javascript.jscomp.ModuleMetadata.Module;
 import com.google.javascript.jscomp.SourceFile;
+import com.google.javascript.jscomp.deps.ModuleLoader.ResolutionMode;
 import com.google.javascript.jscomp.gwt.client.Util.JsArray;
 import com.google.javascript.jscomp.gwt.client.Util.JsObject;
 import com.google.javascript.jscomp.gwt.client.Util.JsRegExp;
+import com.google.javascript.jscomp.modules.ModuleMetadataMap.ModuleMetadata;
 import com.google.javascript.jscomp.parsing.Config;
 import com.google.javascript.jscomp.parsing.ParserRunner;
 import com.google.javascript.jscomp.parsing.parser.trees.Comment;
 import com.google.javascript.rhino.ErrorReporter;
 import com.google.javascript.rhino.InputId;
+import com.google.javascript.rhino.Node;
+import com.google.javascript.rhino.Token;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -187,29 +189,19 @@ public class JsfileParser {
       JsRegExp.Match match;
       List<CommentAnnotation> out = new ArrayList<>();
       while ((match = re.exec(comment)) != null) {
-        boolean modName = match.get(OTHER_ANNOTATION_GROUP) == null;
-        String name = modName ? "@modName" : match.get(OTHER_ANNOTATION_GROUP);
-        String value =
-            Strings.nullToEmpty(match.get(modName ? MODNAME_VALUE_GROUP : OTHER_VALUE_GROUP));
+        String name = match.get(ANNOTATION_NAME_GROUP);
+        String value = Strings.nullToEmpty(match.get(ANNOTATION_VALUE_GROUP));
         out.add(new CommentAnnotation(name, value));
       }
       return out;
     }
 
+    // Regex for a JSDoc annotation with an `@name` and an optional brace-delimited `{value}`.
+    // The `@` should not match the middle of a word.
     private static final String ANNOTATION_RE =
-        Joiner.on("").join(
-            // Don't match "@" in the middle of a word
-            "(?:[^a-zA-Z0-9_$]|^)",
-            "(?:",
-            // Case 1: @modName with a single identifier and no braces
-            "@modName[\\t\\v\\f ]*([^{\\t\\n\\v\\f\\r ][^\\t\\n\\v\\f\\r ]*)",
-            "|",
-            // Case 2: Everything else, with an optional brace-delimited argument
-            "(@[a-zA-Z]+)(?:\\s*\\{\\s*([^}\\t\\n\\v\\f\\r ]+)\\s*\\})?",
-            ")");
-    private static final int MODNAME_VALUE_GROUP = 1;
-    private static final int OTHER_ANNOTATION_GROUP = 2;
-    private static final int OTHER_VALUE_GROUP = 3;
+        "(?:[^a-zA-Z0-9_$]|^)(@[a-zA-Z]+)(?:\\s*\\{\\s*([^}\\t\\n\\v\\f\\r ]+)\\s*\\})?";
+    private static final int ANNOTATION_NAME_GROUP = 1;
+    private static final int ANNOTATION_VALUE_GROUP = 2;
   }
 
   /** Method exported to JS to parse a file for dependencies and annotations. */
@@ -272,21 +264,31 @@ public class JsfileParser {
         parseComment(comment, info);
       }
     }
-    ModuleMetadata moduleMetadata = new ModuleMetadata(compiler);
-    moduleMetadata.hotSwapScript(parsed.ast);
+    GatherModuleMetadata gatherModuleMetadata =
+        new GatherModuleMetadata(
+            compiler, /* processCommonJsModules= */ false, ResolutionMode.BROWSER);
+    gatherModuleMetadata.process(new Node(Token.ROOT), parsed.ast);
     compiler.generateReport();
-    Module module = Iterables.getOnlyElement(moduleMetadata.getModulesByPath().values());
+    ModuleMetadata module =
+        Iterables.getOnlyElement(
+            compiler.getModuleMetadataMap().getModulesByPath().values());
     if (module.isEs6Module()) {
       info.loadFlags.add(JsArray.of("module", "es6"));
     } else if (module.isGoogModule()) {
       info.loadFlags.add(JsArray.of("module", "goog"));
     }
-    info.provides.addAll(module.googNamespaces());
-    info.requires.addAll(module.requiredGoogNamespaces());
-    info.typeRequires.addAll(module.requiredTypes());
-    info.testonly = module.isTestOnly();
-    info.importedModules.addAll(module.es6ImportSpecifiers().elementSet());
     info.goog = module.usesClosure();
+    // If something doesn't have an external dependency on Closure, then it does not have any
+    // externally required files or symbols to provide. This is needed for bundles that contain
+    // base.js as well as other files. These bundles should look like they do not require or provide
+    // anything at all.
+    if (module.usesClosure()) {
+      info.provides.addAll(module.googNamespaces());
+      info.requires.addAll(module.requiredGoogNamespaces());
+      info.typeRequires.addAll(module.requiredTypes());
+      info.testonly = module.isTestOnly();
+    }
+    info.importedModules.addAll(module.es6ImportSpecifiers().elementSet());
     return info;
   }
 

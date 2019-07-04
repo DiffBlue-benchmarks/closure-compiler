@@ -39,7 +39,6 @@
 
 package com.google.javascript.rhino.jstype;
 
-
 import com.google.javascript.rhino.ErrorReporter;
 import com.google.javascript.rhino.Node;
 
@@ -161,11 +160,6 @@ public class EnumElementType extends ObjectType {
   }
 
   @Override
-  public boolean hasReferenceName() {
-    return true;
-  }
-
-  @Override
   public boolean isSubtype(JSType that) {
     return isSubtype(that, ImplCache.create(), SubtypingMode.NORMAL);
   }
@@ -202,7 +196,7 @@ public class EnumElementType extends ObjectType {
   }
 
   @Override
-  public JSType findPropertyType(String propertyName) {
+  protected JSType findPropertyTypeWithoutConsideringTemplateTypes(String propertyName) {
     return primitiveType.findPropertyType(propertyName);
   }
 

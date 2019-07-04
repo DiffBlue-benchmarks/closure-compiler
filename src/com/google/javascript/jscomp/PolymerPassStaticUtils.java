@@ -46,7 +46,8 @@ final class PolymerPassStaticUtils {
       return false;
     }
     Node name = call.getFirstChild();
-    // When imported from an ES module, we'll have a GETPROP like
+    // When imported from an ES module, the rewriting should set the original name.
+    // When imported from an goog module (TS), we'll have a GETPROP like
     // `module$polymer$polymer_legacy.Polymer`.
     return name.matchesQualifiedName("Polymer")
         || "Polymer".equals(name.getOriginalQualifiedName())
@@ -66,7 +67,8 @@ final class PolymerPassStaticUtils {
     }
     Node heritage = cls.getSecondChild();
     // In Polymer 3, the base class was renamed from `Polymer.Element` to `PolymerElement`. When
-    // imported from an ES module, we'll have a GETPROP like
+    // imported from an ES module, the rewriting should set the original name to `PolymerElement`.
+    // When imported from an goog module (TS), we'll have a GETPROP like
     // `module$polymer$polymer_element.PolymerElement`.
     return !heritage.isEmpty()
         && (heritage.matchesQualifiedName("Polymer.Element")
@@ -76,7 +78,12 @@ final class PolymerPassStaticUtils {
                 && heritage.getLastChild().getString().equals("PolymerElement")));
   }
 
-  /** Switches all "this.$.foo" to "this.$['foo']". */
+  /**
+   * The "$" member in a Polymer element is a map of statically created nodes in its local DOM. This
+   * method is used to rewrite usage of this map from "this.$.foo" to "this.$['foo']" to avoid
+   * JSC_POSSIBLE_INEXISTENT_PROPERTY errors. Excludes function calls like "bar.$.foo()" since some
+   * libraries place methods under a "$" member.
+   */
   static void switchDollarSignPropsToBrackets(Node def, final AbstractCompiler compiler) {
     checkState(def.isObjectLit() || def.isClassMembers());
     for (Node keyNode : def.children()) {
@@ -91,6 +98,13 @@ final class PolymerPassStaticUtils {
                     && n.getString().equals("$")
                     && n.getParent().isGetProp()
                     && n.getGrandparent().isGetProp()) {
+
+                  // Some libraries like Mojo JS Bindings and jQuery place methods in a "$" member
+                  // e.g. "foo.$.closePipe()". Avoid converting to brackets for these cases.
+                  if (n.getAncestor(3).isCall() && n.getAncestor(3).hasOneChild()) {
+                    return;
+                  }
+
                   Node dollarChildProp = n.getGrandparent();
                   dollarChildProp.setToken(Token.GETELEM);
                   compiler.reportChangeToEnclosingScope(dollarChildProp);

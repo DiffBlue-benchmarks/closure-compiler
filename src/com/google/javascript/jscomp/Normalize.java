@@ -108,7 +108,6 @@ class Normalize implements CompilerPass {
 
   @Override
   public void process(Node externs, Node root) {
-    NodeTraversal.traverse(compiler, root, new RemoveEmptyClassMembers());
     NodeTraversal.traverseRoots(
         compiler, new NormalizeStatements(compiler, assertOnChange), externs, root);
     removeDuplicateDeclarations(externs, root);
@@ -127,16 +126,6 @@ class Normalize implements CompilerPass {
 
     if (!compiler.getLifeCycleStage().isNormalized()) {
       compiler.setLifeCycleStage(LifeCycleStage.NORMALIZED);
-    }
-  }
-
-  private class RemoveEmptyClassMembers extends AbstractPostOrderCallback {
-    @Override
-    public void visit(NodeTraversal t, Node n, Node parent) {
-      if (n.isEmpty() && parent.isClassMembers()) {
-        reportCodeChange("empty member in class", n);
-        n.detach();
-      }
     }
   }
 
@@ -419,7 +408,7 @@ class Normalize implements CompilerPass {
       // There are only two cases where a string token
       // may be a variable reference: The right side of a GETPROP
       // or an OBJECTLIT key.
-      boolean isObjLitKey = NodeUtil.isObjectLitKey(n);
+      boolean isObjLitKey = NodeUtil.mayBeObjectLitKey(n);
       boolean isProperty = isObjLitKey || (parent.isGetProp() && parent.getLastChild() == n);
       if (n.isName() || isProperty) {
         boolean isMarkedConstant = n.getBooleanProp(Node.IS_CONSTANT_NAME);
@@ -590,6 +579,7 @@ class Normalize implements CompilerPass {
         case FOR:
         case FOR_IN:
         case FOR_OF:
+        case FOR_AWAIT_OF:
         case WHILE:
         case DO:
           return;
@@ -627,6 +617,7 @@ class Normalize implements CompilerPass {
             break;
           case FOR_IN:
           case FOR_OF:
+          case FOR_AWAIT_OF:
             Node first = c.getFirstChild();
             if (first.isVar()) {
               Node lhs = first.getFirstChild();

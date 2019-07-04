@@ -16,10 +16,12 @@
 
 package com.google.javascript.jscomp;
 
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
-/**
- * Tests for {@link RenameLabels}.
- */
+/** Tests for {@link RenameLabels}. */
+@RunWith(JUnit4.class)
 public final class RenameLabelsTest extends CompilerTestCase {
 
   @Override
@@ -27,7 +29,13 @@ public final class RenameLabelsTest extends CompilerTestCase {
     return new RenameLabels(compiler);
   }
 
+  @Override
+  protected int getNumRepetitions() {
+    // TODO(b/33104006): remove this override.
+    return 2;
+  }
 
+  @Test
   public void testRenameInFunction() {
     test("function x(){ Foo:a(); }",
          "function x(){ a(); }");
@@ -61,6 +69,7 @@ public final class RenameLabelsTest extends CompilerTestCase {
         "function x(){a:{function goo(){a:{ a(); break a; }} break a;}}");
   }
 
+  @Test
   public void testRenameForArrowFunction() {
     //remove label that is not referenced
     test("() => { Foo:a(); } ",
@@ -74,6 +83,7 @@ public final class RenameLabelsTest extends CompilerTestCase {
          "() => {   a:{ a(); break   a; } }");
   }
 
+  @Test
   public void testRenameForOf() {
     test(lines(
          "loop:",
@@ -91,6 +101,7 @@ public final class RenameLabelsTest extends CompilerTestCase {
          "}"));
   }
 
+  @Test
   public void testRenameGlobals() {
     test("Foo:{a();}",
          "a();");
@@ -118,6 +129,7 @@ public final class RenameLabelsTest extends CompilerTestCase {
          "a(); while (1) break;");
   }
 
+  @Test
   public void testRenameReused() {
     test("foo:{break foo}; foo:{break foo}", "a:{break a};a:{break a}");
   }

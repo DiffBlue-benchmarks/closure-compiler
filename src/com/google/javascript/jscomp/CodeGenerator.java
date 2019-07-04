@@ -21,6 +21,8 @@ import static com.google.common.base.Preconditions.checkState;
 
 import com.google.common.base.Preconditions;
 import com.google.debugging.sourcemap.Util;
+import com.google.javascript.jscomp.parsing.parser.FeatureSet;
+import com.google.javascript.jscomp.parsing.parser.FeatureSet.Feature;
 import com.google.javascript.rhino.JSDocInfo.Visibility;
 import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.Token;
@@ -49,6 +51,7 @@ public class CodeGenerator {
   private final boolean trustedStrings;
   private final boolean quoteKeywordProperties;
   private final boolean useOriginalName;
+  private final FeatureSet outputFeatureSet;
   private final JSDocInfoPrinter jsDocInfoPrinter;
 
   private CodeGenerator(CodeConsumer consumer) {
@@ -59,6 +62,7 @@ public class CodeGenerator {
     preserveTypeAnnotations = false;
     quoteKeywordProperties = false;
     useOriginalName = false;
+    this.outputFeatureSet = FeatureSet.BARE_MINIMUM;
     this.jsDocInfoPrinter = new JSDocInfoPrinter(false);
   }
 
@@ -71,6 +75,7 @@ public class CodeGenerator {
     this.preserveTypeAnnotations = options.preserveTypeAnnotations;
     this.quoteKeywordProperties = options.shouldQuoteKeywordProperties();
     this.useOriginalName = options.getUseOriginalNamesInOutput();
+    this.outputFeatureSet = options.getOutputFeatureSet();
     this.jsDocInfoPrinter = new JSDocInfoPrinter(useOriginalName);
   }
 
@@ -184,9 +189,14 @@ public class CodeGenerator {
         cc.maybeInsertSpace();
         add("catch");
         cc.maybeInsertSpace();
-        add("(");
-        add(first);
-        add(")");
+
+        if (!first.isEmpty()) {
+          // optional catch binding
+          add("(");
+          add(first);
+          add(")");
+        }
+
         add(last);
         break;
 
@@ -292,9 +302,17 @@ public class CodeGenerator {
         break;
 
       case PARAM_LIST:
-        add("(");
-        addList(first);
-        add(")");
+        // If this is the list for a non-TypeScript arrow function with one simple name param.
+        if (n.getParent().isArrowFunction()
+            && n.hasOneChild()
+            && first.isName()
+            && !outputFeatureSet.has(Feature.TYPE_ANNOTATION)) {
+          add(first);
+        } else {
+          add("(");
+          addList(first);
+          add(")");
+        }
         break;
 
       case DEFAULT_VALUE:
@@ -461,6 +479,12 @@ public class CodeGenerator {
         add("*");
         add("as");
         add(n.getString());
+        break;
+
+      case DYNAMIC_IMPORT:
+        add("import(");
+        addExpr(first, NodeUtil.precedence(type), context);
+        add(")");
         break;
 
         // CLASS -> NAME,EXPR|EMPTY,BLOCK
@@ -1037,7 +1061,9 @@ public class CodeGenerator {
           }
         }
         add("[");
-        add(first);
+        // Must use addExpr() with a priority of 1, because comma expressions aren't allowed.
+        // https://www.ecma-international.org/ecma-262/9.0/index.html#prod-ComputedPropertyName
+        addExpr(first, 1, Context.OTHER);
         add("]");
         // TODO(martinprobst): There's currently no syntax for properties in object literals that
         // have type declarations on them (a la `{foo: number: 12}`). This comes up for, e.g.,
@@ -1060,8 +1086,10 @@ public class CodeGenerator {
             // Object literal value.
             checkState(
                 !isInClass, "initializers should only exist in object literals, not classes");
-            cc.addOp(":", false);
-            add(initializer);
+            cc.add(":");
+            // Must use addExpr() with a priority of 1, because a comma expression here would cause
+            // a syntax error within the object literal.
+            addExpr(initializer, 1, Context.OTHER);
           } else {
             // Computed properties must either have an initializer or be computed member-variable
             // properties that exist for their type declaration.
@@ -1126,19 +1154,17 @@ public class CodeGenerator {
         break;
 
       case TEMPLATELIT:
-        add("`");
+        cc.beginTemplateLit();
         for (Node c = first; c != null; c = c.getNext()) {
-          if (c.isString()) {
-            add(strEscape(c.getString(), "\"", "'", "\\`", "\\\\", "\\$", false, false));
+          if (c.isTemplateLitString()) {
+            add(escapeUnrecognizedCharacters(c.getRawString()));
           } else {
-            // Can't use add() since isWordChar('$') == true and cc would add
-            // an extra space.
-            cc.append("${");
+            cc.beginTemplateLitSub();
             add(c.getFirstChild(), Context.START_OF_EXPR);
-            add("}");
+            cc.endTemplateLitSub();
           }
         }
-        add("`");
+        cc.endTemplateLit();
         break;
 
         // Type Declaration ASTs.
@@ -1803,10 +1829,6 @@ public class CodeGenerator {
         case '$': sb.append(dollarEscape); break;
         case '`': sb.append(backtickEscape); break;
 
-        // From LineTerminators (ES5 Section 7.3, Table 3)
-        case '\u2028': sb.append("\\u2028"); break;
-        case '\u2029': sb.append("\\u2029"); break;
-
         case '=':
           // '=' is a syntactically significant regexp character.
           if (trustedStrings || isRegexp) {
@@ -1864,6 +1886,68 @@ public class CodeGenerator {
           } else {
             sb.append(c);
           }
+          break;
+
+        default:
+          if (isRegexp
+              || !outputFeatureSet.contains(Feature.UNESCAPED_UNICODE_LINE_OR_PARAGRAPH_SEP)) {
+            // In 2019 these characters (line and paragraph separators) are valid in strings but
+            // not regular expressions.
+            // https://github.com/tc39/proposal-json-superset
+            if (c == '\u2028') {
+              sb.append("\\u2028");
+              break;
+            }
+            if (c == '\u2029') {
+              sb.append("\\u2029");
+              break;
+            }
+          }
+
+          if ((outputCharsetEncoder != null && outputCharsetEncoder.canEncode(c))
+              || (c > 0x1f && c < 0x7f)) {
+            // If we're given an outputCharsetEncoder, then check if the character can be
+            // represented in this character set. If no charsetEncoder provided - pass straight
+            // Latin characters through, and escape the rest. Doing the explicit character check is
+            // measurably faster than using the CharsetEncoder.
+            sb.append(c);
+          } else {
+            // Other characters can be misinterpreted by some JS parsers,
+            // or perhaps mangled by proxies along the way,
+            // so we play it safe and Unicode escape them.
+            Util.appendHexJavaScriptRepresentation(sb, c);
+          }
+      }
+    }
+    return sb.toString();
+  }
+
+  /**
+   * Helper to escape the characters that might be misinterpreted
+   *
+   * @param s the string to modify
+   * @return the string with unrecognizable characters escaped.
+   */
+  private String escapeUnrecognizedCharacters(String s) {
+    // TODO(yitingwang) Move this method to a suitable place
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < s.length(); i++) {
+      char c = s.charAt(i);
+      switch (c) {
+          // From the SingleEscapeCharacter grammar production.
+        case '\b':
+        case '\f':
+        case '\n':
+        case '\r':
+        case '\t':
+        case '\\':
+        case '\"':
+        case '\'':
+        case '$':
+        case '`':
+        case '\u2028':
+        case '\u2029':
+          sb.append(c);
           break;
         default:
           if ((outputCharsetEncoder != null && outputCharsetEncoder.canEncode(c))

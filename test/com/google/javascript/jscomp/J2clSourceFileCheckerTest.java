@@ -18,8 +18,12 @@ package com.google.javascript.jscomp;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.collect.ImmutableList;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /** Tests for {@link J2clSourceFileChecker}. */
+@RunWith(JUnit4.class)
 public class J2clSourceFileCheckerTest extends CompilerTestCase {
   private static final SourceFile J2CL_SOURCE_FILE =
       SourceFile.fromCode(
@@ -29,21 +33,18 @@ public class J2clSourceFileCheckerTest extends CompilerTestCase {
   private AbstractCompiler compiler;
 
   @Override
-  protected int getNumRepetitions() {
-    return 1;
-  }
-
-  @Override
   protected CompilerPass getProcessor(final Compiler compiler) {
     this.compiler = compiler;
     return new J2clSourceFileChecker(compiler);
   }
 
+  @Test
   public void testShouldRunJ2clPassesWithoutJ2clSources() {
     testSame("");
     assertThat(J2clSourceFileChecker.shouldRunJ2clPasses(compiler)).isFalse();
   }
 
+  @Test
   public void testShouldRunJ2clPassesWithJ2clSources() {
     testSame(ImmutableList.of(J2CL_SOURCE_FILE));
     assertThat(J2clSourceFileChecker.shouldRunJ2clPasses(compiler)).isTrue();

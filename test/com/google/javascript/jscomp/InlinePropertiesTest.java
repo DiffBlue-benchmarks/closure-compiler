@@ -17,8 +17,13 @@
 package com.google.javascript.jscomp;
 
 import com.google.javascript.rhino.Node;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /** @author johnlenz@google.com (John Lenz) */
+@RunWith(JUnit4.class)
 public final class InlinePropertiesTest extends CompilerTestCase {
 
   private static final String EXTERNS =
@@ -78,12 +83,8 @@ public final class InlinePropertiesTest extends CompilerTestCase {
   }
 
   @Override
-  protected int getNumRepetitions() {
-    return 1;
-  }
-
-  @Override
-  protected void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     super.setUp();
     enableTypeCheck();
     enableNormalize();
@@ -92,7 +93,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
     this.runSmartNameRemoval = false;
   }
 
-
+  @Test
   public void testConstInstanceProp1() {
     // Replace a reference to known constant property.
     test(lines(
@@ -126,6 +127,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "new C(), 1;"));
   }
 
+  @Test
   public void testConstInstanceProp2() {
     // Replace a constant reference
     test(lines(
@@ -144,7 +146,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "1;\n"));
   }
 
-
+  @Test
   public void testConstInstanceProp3() {
     // Replace a constant reference
     test(lines(
@@ -165,6 +167,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "1;\n"));
   }
 
+  @Test
   public void testConstInstanceProp4() {
     // This pass replies on DisambiguateProperties to distinguish like named
     // properties so it doesn't handle this case.
@@ -181,6 +184,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "new C().foo;\n"));
   }
 
+  @Test
   public void testConstInstanceProp5() {
     test(
         lines(
@@ -203,7 +207,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "var x = (new Foo, 2);"));
   }
 
-
+  @Test
   public void testConstClassProps1() {
     // Inline constant class properties,
     test(
@@ -223,6 +227,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "var z = 1;"));
   }
 
+  @Test
   public void testConstClassProps2() {
     // Don't confuse, class properties with instance properties
     testSame(
@@ -234,6 +239,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "var z = C.foo;"));
   }
 
+  @Test
   public void testConstClassProps3() {
     // Don't confuse, class properties with prototype properties
     testSame(
@@ -244,6 +250,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "var z = C.foo;\n"));
   }
 
+  @Test
   public void testConstClassProps4() {
     // Don't confuse unique constructors with similiar function types
     testSame(
@@ -258,6 +265,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "var z = C.foo;\n"));
   }
 
+  @Test
   public void testConstClassProps5() {
     // Don't confuse subtype constructors properties
     testSame(
@@ -270,6 +278,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "var z = C.foo;\n"));
   }
 
+  @Test
   public void testConstClassProps6() {
     // Don't inline to unknowns
     testSame(
@@ -280,6 +289,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "var z = externUnknownVar.foo;\n"));
   }
 
+  @Test
   public void testConstClassProps7() {
     // Don't inline to Function prop
     testSame(
@@ -290,6 +300,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "var z = externFn.foo;\n"));
   }
 
+  @Test
   public void testNonConstClassProp1() {
     testSame(lines(
         "/** @constructor */",
@@ -300,6 +311,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "delete C.foo;"));
   }
 
+  @Test
   public void testNonConstClassProp2() {
     testSame(lines(
         "/** @constructor */",
@@ -310,6 +322,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "C.foo = 2;"));
   }
 
+  @Test
   public void testNonConstClassProp3() {
     testSame(lines(
         "/** @constructor */",
@@ -323,6 +336,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "f(C);"));
   }
 
+  @Test
   public void testNonConstInstanceProp1() {
     testSame(lines(
         "/** @constructor */",
@@ -334,6 +348,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "delete x.foo;"));
   }
 
+  @Test
   public void testNonConstInstanceProp2() {
     testSame(lines(
         "/** @constructor */",
@@ -345,6 +360,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "x.foo = 2;"));
   }
 
+  @Test
   public void testNonConstructorInstanceProp1() {
     testSame(lines(
         "function C() {",
@@ -354,6 +370,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "C().foo;"));
   }
 
+  @Test
   public void testConditionalInstanceProp1() {
     testSame(lines(
         "/** @constructor */",
@@ -363,6 +380,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "new C().foo;"));
   }
 
+  @Test
   public void testConstPrototypeProp1() {
     test(lines(
         "/** @constructor */",
@@ -376,6 +394,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "new C(), 1;\n"));
   }
 
+  @Test
   public void testConstPrototypeProp2() {
     test(lines(
         "/** @constructor */",
@@ -391,6 +410,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "1;\n"));
   }
 
+  @Test
   public void testConstPrototypePropInGlobalBlockScope() {
     test(lines(
         "/** @constructor */",
@@ -410,6 +430,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "1;"));
   }
 
+  @Test
   public void testGlobalThisNotInlined() {
     testSame(lines(
         "this.foo = 1;",
@@ -419,6 +440,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
         "}"));
   }
 
+  @Test
   public void testConstPrototypePropFromSuper() {
     test(
         lines(
@@ -437,6 +459,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "new D, 1;"));
   }
 
+  @Test
   public void testTypedPropInlining() {
     test(
         lines(
@@ -453,6 +476,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "f(new C);"));
   }
 
+  @Test
   public void testTypeMismatchNoPropInlining() {
     testSame(
         lines(
@@ -463,6 +487,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "f([]);"));
   }
 
+  @Test
   public void testStructuralInterfacesNoPropInlining() {
     testSame(
         lines(
@@ -478,6 +503,7 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "f([]);"));
   }
 
+  @Test
   public void testStructuralInterfacesNoPropInlining2() {
     this.runSmartNameRemoval = true;
 
@@ -499,5 +525,179 @@ public final class InlinePropertiesTest extends CompilerTestCase {
             "",
             "function f(/** ? */ x) { return x.foo; }",
             "f(new C());"));
+  }
+
+  @Test
+  public void testConstInstanceProp_es6Class() {
+    // Replace a reference to known constant property.
+    test(
+        lines(
+            "class C {", //
+            "  constructor() {",
+            "    this.foo = 1;",
+            "  }",
+            "}",
+            "new C().foo;"),
+        lines(
+            "class C {", //
+            "  constructor() {",
+            "    this.foo = 1;",
+            "  }",
+            "}",
+            "new C(), 1;"));
+  }
+
+  @Test
+  public void testMultipleConstInstanceProp_es6Class() {
+    test(
+        lines(
+            "class Foo {",
+            "  constructor() {",
+            "    /** @type {?number} */",
+            "    this.a = 1;",
+            "    /** @type {number} */",
+            "    this.b = 2;",
+            "  }",
+            "}",
+            "var x = (new Foo).b;"),
+        lines(
+            "class Foo {",
+            "  constructor() {",
+            "    /** @type {?number} */",
+            "    this.a = 1;",
+            "    /** @type {number} */",
+            "    this.b = 2;",
+            "  }",
+            "}",
+            "var x = (new Foo, 2);"));
+  }
+
+  @Test
+  public void testConstInstancePropInArrowFunction_es6Class() {
+    // Don't replace a reference to known constant property defined in an arrow function.
+    testSame(
+        lines(
+            "/** @unrestricted */", // make this not a struct, so we can define this.foo
+            "class C {", //
+            "  constructor() {",
+            "    (() => {",
+            "      this.foo = 1;",
+            "    })();",
+            "  }",
+            "}",
+            "new C().foo;"));
+  }
+
+  @Test
+  public void testConstClassProps_es6Class() {
+    // Inline constant class properties,
+    test(
+        lines(
+            "class C {}", //
+            "C.bar = 2;",
+            "C.foo = 1;",
+            "var z = C.foo;"),
+        lines(
+            "class C {}", //
+            "C.bar = 2;",
+            "C.foo = 1;",
+            "var z = 1;"));
+  }
+
+  @Test
+  public void testConstClassPropsInheritedProp_es6Class() {
+    test(
+        lines(
+            "class C {}", //
+            "class D extends C {}",
+            "C.foo = 1;",
+            "var z = D.foo;\n"),
+        lines(
+            "class C {}", //
+            "class D extends C {}",
+            "C.foo = 1;",
+            "var z = 1;\n"));
+  }
+
+  @Test
+  public void testConstClassPropsInheritedPropChain_es6Class() {
+    test(
+        lines(
+            "class C {}", //
+            "class D extends C {}",
+            "class E extends D {}",
+            "class F extends E {}",
+            "C.foo = 1;",
+            "var z = F.foo;"),
+        lines(
+            "class C {}", //
+            "class D extends C {}",
+            "class E extends D {}",
+            "class F extends E {}",
+            "C.foo = 1;",
+            "var z = 1;"));
+  }
+
+  @Test
+  public void testConstClassPropsNonInheritedProp_es6Class() {
+    // Test that we don't accidentally treat the superclass as having a subclass prop
+    testSame(
+        lines(
+            "class C {}", //
+            "class D extends C {}",
+            "D.foo = 1;",
+            "var z = C.foo;"));
+  }
+
+  @Test
+  public void testNonConstClassProp_es6ClassWithStaticMethod() {
+    testSame(
+        lines(
+            "class C { static foo() {} }", //
+            "alert(C.foo);",
+            "C.foo = 1;"));
+  }
+
+  @Test
+  public void testConstPrototypeProp_es6Class() {
+    test(
+        lines(
+            "class C {}", //
+            "C.prototype.foo = 1;",
+            "new C().foo;"),
+        lines(
+            "class C {}", //
+            "C.prototype.foo = 1;",
+            "new C(), 1;"));
+  }
+
+  @Test
+  public void testNonConstPrototypePropFromMemberFn() {
+    testSame(
+        lines(
+            "class C {", //
+            "  foo() {}",
+            "}",
+            "C.prototype.foo = 4;",
+            "(new C()).foo"));
+  }
+
+  @Test
+  public void testObjectPatternStringKeyDoesntInvalidateProp() {
+    test(
+        lines(
+            "/** @constructor */",
+            "function C() {",
+            "  this.foo = 3;",
+            "}",
+            "(new C()).foo",
+            "const {foo} = new C();"),
+        lines(
+            "/** @constructor */",
+            "function C() {",
+            "  this.foo = 3;",
+            "}",
+            "new C(), 3;",
+            "const {foo} = new C();"));
   }
 }

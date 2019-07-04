@@ -32,6 +32,7 @@ import com.google.javascript.jscomp.deps.ModuleLoader.ModulePath;
 import com.google.javascript.jscomp.deps.SimpleDependencyInfo;
 import com.google.javascript.jscomp.parsing.parser.FeatureSet;
 import com.google.javascript.rhino.InputId;
+import com.google.javascript.rhino.JSDocInfo;
 import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.StaticSourceFile.SourceKind;
 import java.io.IOException;
@@ -167,8 +168,8 @@ public class CompilerInput extends DependencyInfo.Base implements SourceAst {
   }
 
   @Override
-  public ImmutableList<String> getWeakRequires() {
-    return getDependencyInfo().getWeakRequires();
+  public ImmutableList<String> getTypeRequires() {
+    return getDependencyInfo().getTypeRequires();
   }
 
   /**
@@ -188,6 +189,16 @@ public class CompilerInput extends DependencyInfo.Base implements SourceAst {
   @Override
   public ImmutableList<String> getProvides() {
     return getDependencyInfo().getProvides();
+  }
+
+  @Override
+  public boolean getHasExternsAnnotation() {
+    return getDependencyInfo().getHasExternsAnnotation();
+  }
+
+  @Override
+  public boolean getHasNoCompileAnnotation() {
+    return getDependencyInfo().getHasNoCompileAnnotation();
   }
 
   /**
@@ -257,10 +268,8 @@ public class CompilerInput extends DependencyInfo.Base implements SourceAst {
     extraRequires.add(require);
   }
 
-  /**
-   * Returns the DependencyInfo object, generating it lazily if necessary.
-   */
-  private DependencyInfo getDependencyInfo() {
+  /** Returns the DependencyInfo object, generating it lazily if necessary. */
+  DependencyInfo getDependencyInfo() {
     if (dependencyInfo == null) {
       dependencyInfo = generateDependencyInfo();
     }
@@ -269,7 +278,10 @@ public class CompilerInput extends DependencyInfo.Base implements SourceAst {
           SimpleDependencyInfo.builder(getName(), getName())
               .setProvides(concat(dependencyInfo.getProvides(), extraProvides))
               .setRequires(concat(dependencyInfo.getRequires(), extraRequires))
+              .setTypeRequires(dependencyInfo.getTypeRequires())
               .setLoadFlags(dependencyInfo.getLoadFlags())
+              .setHasExternsAnnotation(dependencyInfo.getHasExternsAnnotation())
+              .setHasNoCompileAnnotation(dependencyInfo.getHasNoCompileAnnotation())
               .build();
       extraRequires.clear();
       extraProvides.clear();
@@ -318,6 +330,7 @@ public class CompilerInput extends DependencyInfo.Base implements SourceAst {
       }
 
       finder.visitTree(root);
+      JSDocInfo info = root.getJSDocInfo();
 
       // TODO(nicksantos|user): This caching behavior is a bit
       // odd, and only works if you assume the exact call flow that
@@ -332,7 +345,10 @@ public class CompilerInput extends DependencyInfo.Base implements SourceAst {
       return SimpleDependencyInfo.builder("", "")
           .setProvides(finder.provides)
           .setRequires(finder.requires)
+          .setTypeRequires(finder.typeRequires)
           .setLoadFlags(finder.loadFlags)
+          .setHasExternsAnnotation(info != null && info.isExterns())
+          .setHasNoCompileAnnotation(info != null && info.isNoCompile())
           .build();
     }
   }
@@ -341,6 +357,7 @@ public class CompilerInput extends DependencyInfo.Base implements SourceAst {
     private final Map<String, String> loadFlags = new TreeMap<>();
     private final List<String> provides = new ArrayList<>();
     private final List<Require> requires = new ArrayList<>();
+    private final List<String> typeRequires = new ArrayList<>();
     private final ModulePath modulePath;
 
     DepsFinder(ModulePath modulePath) {
@@ -392,6 +409,13 @@ public class CompilerInput extends DependencyInfo.Base implements SourceAst {
                 requires.add(Require.googRequireSymbol(argument.getString()));
                 return;
 
+              case "requireType":
+                if (!argument.isString()) {
+                  return;
+                }
+                typeRequires.add(argument.getString());
+                return;
+
               case "loadModule":
                 // Process the block of the loadModule argument
                 n = argument.getLastChild();
@@ -401,7 +425,8 @@ public class CompilerInput extends DependencyInfo.Base implements SourceAst {
                 return;
             }
           } else if (parent.isGetProp()
-              && parent.matchesQualifiedName("goog.module.declareNamespace")
+              // TODO(johnplaisted): Consolidate on declareModuleId
+              && parent.matchesQualifiedName("goog.declareModuleId")
               && parent.getParent().isCall()) {
             Node argument = parent.getParent().getSecondChild();
             if (!argument.isString()) {
@@ -537,7 +562,7 @@ public class CompilerInput extends DependencyInfo.Base implements SourceAst {
     return ImmutableSet.<T>builder().addAll(first).addAll(second).build();
   }
 
-  ModulePath getPath() {
+  public ModulePath getPath() {
     if (modulePath == null) {
       ModuleLoader moduleLoader = compiler.getModuleLoader();
       this.modulePath = moduleLoader.resolve(getName());

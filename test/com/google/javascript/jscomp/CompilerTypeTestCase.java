@@ -17,8 +17,8 @@
 
 package com.google.javascript.jscomp;
 
-import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
+import static com.google.javascript.jscomp.testing.JSCompCorrespondences.DESCRIPTION_EQUALITY;
 import static com.google.javascript.rhino.testing.TypeSubject.assertType;
 import static com.google.javascript.rhino.testing.TypeSubject.types;
 
@@ -36,44 +36,46 @@ import com.google.javascript.rhino.jstype.ObjectType;
 import com.google.javascript.rhino.jstype.RecordTypeBuilder;
 import com.google.javascript.rhino.jstype.TemplatizedType;
 import com.google.javascript.rhino.testing.TestErrorReporter;
-import java.util.Arrays;
-import junit.framework.TestCase;
+import org.junit.Before;
 
-/**
- * This class is mostly used by passes testing the old type checker. Passes that run after type
- * checking and need type information use the class TypeICompilerTestCase.
- */
-abstract class CompilerTypeTestCase extends TestCase {
+/** This class is mostly used by passes testing {@link TypeCheck}. */
+abstract class CompilerTypeTestCase {
   protected static final Joiner LINE_JOINER = Joiner.on('\n');
 
-  static final String CLOSURE_DEFS = LINE_JOINER.join(
-      "/** @const */ var goog = {};",
-      "goog.inherits = function(x, y) {};",
-      "/** @type {!Function} */ goog.abstractMethod = function() {};",
-      "goog.isArray = function(x) {};",
-      "goog.isDef = function(x) {};",
-      "goog.isFunction = function(x) {};",
-      "goog.isNull = function(x) {};",
-      "goog.isString = function(x) {};",
-      "goog.isObject = function(x) {};",
-      "goog.isDefAndNotNull = function(x) {};",
-      "/** @const */ goog.array = {};",
-      // simplified ArrayLike definition
-      "/**",
-      " * @typedef {Array|{length: number}}",
-      " */",
-      "goog.array.ArrayLike;",
-      "/**",
-      " * @param {Array.<T>|{length:number}} arr",
-      " * @param {function(this:S, T, number, goog.array.ArrayLike):boolean} f",
-      " * @param {S=} opt_obj",
-      " * @return {!Array.<T>}",
-      " * @template T,S",
-      " */",
-      // return empty array to satisfy return type
-      "goog.array.filter = function(arr, f, opt_obj){ return []; };",
-      "goog.asserts = {};",
-      "/** @return {*} */ goog.asserts.assert = function(x) { return x; };");
+  static final String CLOSURE_DEFS =
+      LINE_JOINER.join(
+          "/** @const */ var goog = {};",
+          "goog.inherits = function(x, y) {};",
+          "/** @type {!Function} */ goog.abstractMethod = function() {};",
+          "goog.isArray = function(x) {};",
+          "goog.isDef = function(x) {};",
+          "goog.isFunction = function(x) {};",
+          "goog.isNull = function(x) {};",
+          "goog.isString = function(x) {};",
+          "goog.isObject = function(x) {};",
+          "goog.isDefAndNotNull = function(x) {};",
+          "/** @const */ goog.array = {};",
+          // simplified ArrayLike definition
+          "/**",
+          " * @typedef {Array|{length: number}}",
+          " */",
+          "goog.array.ArrayLike;",
+          "/**",
+          " * @param {Array<T>|{length:number}} arr",
+          " * @param {function(this:S, T, number, goog.array.ArrayLike):boolean} f",
+          " * @param {S=} obj",
+          " * @return {!Array<T>}",
+          " * @template T,S",
+          " */",
+          // return empty array to satisfy return type
+          "goog.array.filter = function(arr, f, obj){ return []; };",
+          "goog.asserts = {};",
+          "/** @return {*} */ goog.asserts.assert = function(x) { return x; };",
+          "goog.module = function(ns) {};",
+          "goog.module.get = function(ns) {};",
+          "/** @return {?} */",
+          "goog.require = function(ns) {};",
+          "goog.loadModule = function(mod) {};");
 
   /**
    * A default set of externs for testing.
@@ -106,25 +108,19 @@ abstract class CompilerTypeTestCase extends TestCase {
   }
 
   protected void checkReportedWarningsHelper(String[] expected) {
-    JSError[] warnings = compiler.getWarnings();
-    for (String element : expected) {
-      if (element != null) {
-        assertThat(warnings.length).named("Number of warnings").isGreaterThan(0);
-        assertThat(warnings[0].description).isEqualTo(element);
-        warnings =
-            Arrays.asList(warnings)
-                .subList(1, warnings.length)
-                .toArray(new JSError[warnings.length - 1]);
-      }
+    if (expected == null) {
+      expected = new String[0];
     }
-    if (warnings.length > 0) {
-      fail("unexpected warnings(s):\n" + LINE_JOINER.join(warnings));
-    }
+
+    assertWithMessage("Regarding warnings:")
+        .that(compiler.getWarnings())
+        .comparingElementsUsing(DESCRIPTION_EQUALITY)
+        .containsExactlyElementsIn(expected)
+        .inOrder();
   }
 
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
+  @Before
+  public void setUp() throws Exception {
     errorReporter = new TestErrorReporter(null, null);
     initializeNewCompiler(getDefaultOptions());
   }

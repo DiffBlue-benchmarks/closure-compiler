@@ -371,7 +371,7 @@ public class IR {
   public static Node call(Node target, Node ... args) {
     Node call = new Node(Token.CALL, target);
     for (Node arg : args) {
-      checkState(mayBeExpression(arg), arg);
+      checkState(mayBeExpression(arg) || arg.isSpread(), arg);
       call.addChildToBack(arg);
     }
     return call;
@@ -380,7 +380,7 @@ public class IR {
   public static Node newNode(Node target, Node ... args) {
     Node newcall = new Node(Token.NEW, target);
     for (Node arg : args) {
-      checkState(mayBeExpression(arg));
+      checkState(mayBeExpression(arg) || arg.isSpread(), arg);
       newcall.addChildToBack(arg);
     }
     return newcall;
@@ -422,6 +422,11 @@ public class IR {
     checkState(mayBeExpression(target));
     checkState(mayBeExpression(elem));
     return new Node(Token.GETELEM, target, elem);
+  }
+
+  public static Node delprop(Node target) {
+    checkState(mayBeExpression(target));
+    return new Node(Token.DELPROP, target);
   }
 
   public static Node assign(Node target, Node expr) {
@@ -536,14 +541,18 @@ public class IR {
   public static Node objectlit(Node ... propdefs) {
     Node objectlit = new Node(Token.OBJECTLIT);
     for (Node propdef : propdefs) {
-      checkState(
-          propdef.isStringKey()
-              || propdef.isMemberFunctionDef()
-              || propdef.isGetterDef()
-              || propdef.isSetterDef());
-      if (!propdef.isStringKey()) {
-        checkState(propdef.hasOneChild());
+      switch (propdef.getToken()) {
+        case STRING_KEY:
+        case MEMBER_FUNCTION_DEF:
+        case GETTER_DEF:
+        case SETTER_DEF:
+        case SPREAD:
+        case COMPUTED_PROP:
+          break;
+        default:
+          throw new IllegalStateException("Unexpected OBJECTLIT child: " + propdef);
       }
+
       objectlit.addChildToBack(propdef);
     }
     return objectlit;
@@ -584,7 +593,7 @@ public class IR {
   public static Node arraylit(Node ... exprs) {
     Node arraylit = new Node(Token.ARRAYLIT);
     for (Node expr : exprs) {
-      checkState(mayBeExpressionOrEmpty(expr));
+      checkState(mayBeExpressionOrEmpty(expr) || expr.isSpread(), expr);
       arraylit.addChildToBack(expr);
     }
     return arraylit;
@@ -798,6 +807,7 @@ public class IR {
       case NE:
       case NEG:
       case NEW:
+      case NEW_TARGET:
       case NOT:
       case NUMBER:
       case NULL:
@@ -808,7 +818,6 @@ public class IR {
       case RSH:
       case SHEQ:
       case SHNE:
-      case SPREAD:
       case STRING:
       case SUB:
       case SUPER:

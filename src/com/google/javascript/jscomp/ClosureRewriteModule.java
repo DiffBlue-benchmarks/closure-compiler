@@ -18,6 +18,12 @@ package com.google.javascript.jscomp;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
+import static com.google.javascript.jscomp.ClosurePrimitiveErrors.INVALID_FORWARD_DECLARE_NAMESPACE;
+import static com.google.javascript.jscomp.ClosurePrimitiveErrors.INVALID_GET_CALL_SCOPE;
+import static com.google.javascript.jscomp.ClosurePrimitiveErrors.INVALID_GET_NAMESPACE;
+import static com.google.javascript.jscomp.ClosurePrimitiveErrors.INVALID_REQUIRE_NAMESPACE;
+import static com.google.javascript.jscomp.ClosurePrimitiveErrors.INVALID_REQUIRE_TYPE_NAMESPACE;
+import static com.google.javascript.jscomp.ClosurePrimitiveErrors.MISSING_MODULE_OR_PROVIDE;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
@@ -99,30 +105,10 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
           "JSC_GOOG_MODULE_INVALID_PROVIDE_NAMESPACE",
           "goog.provide parameter must be a string literal.");
 
-  static final DiagnosticType INVALID_REQUIRE_NAMESPACE =
-      DiagnosticType.error(
-          "JSC_GOOG_MODULE_INVALID_REQUIRE_NAMESPACE",
-          "goog.require parameter must be a string literal.");
-
-  static final DiagnosticType INVALID_FORWARD_DECLARE_NAMESPACE =
-      DiagnosticType.error(
-          "JSC_GOOG_MODULE_INVALID_FORWARD_DECLARE_NAMESPACE",
-          "goog.forwardDeclare parameter must be a string literal.");
-
-  static final DiagnosticType INVALID_GET_NAMESPACE =
-      DiagnosticType.error(
-          "JSC_GOOG_MODULE_INVALID_GET_NAMESPACE",
-          "goog.module.get parameter must be a string literal.");
-
   static final DiagnosticType INVALID_PROVIDE_CALL =
       DiagnosticType.error(
           "JSC_GOOG_MODULE_INVALID_PROVIDE_CALL",
           "goog.provide can not be called in goog.module.");
-
-  static final DiagnosticType INVALID_GET_CALL_SCOPE =
-      DiagnosticType.error(
-          "JSC_GOOG_MODULE_INVALID_GET_CALL_SCOPE",
-          "goog.module.get can not be called in global scope.");
 
   static final DiagnosticType INVALID_GET_ALIAS =
       DiagnosticType.error(
@@ -149,11 +135,6 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
           "JSC_DUPLICATE_NAMESPACE",
           "Duplicate namespace: {0}");
 
-  static final DiagnosticType MISSING_MODULE_OR_PROVIDE =
-      DiagnosticType.error(
-          "JSC_MISSING_MODULE_OR_PROVIDE",
-          "Required namespace \"{0}\" never defined.");
-
   static final DiagnosticType LATE_PROVIDE_ERROR =
       DiagnosticType.error(
           "JSC_LATE_PROVIDE_ERROR",
@@ -175,6 +156,11 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
           "JSC_ILLEGAL_DESTRUCTURING_NOT_EXPORTED",
           "Destructuring import reference to name \"{0}\" was not exported in module {1}");
 
+  static final DiagnosticType LOAD_MODULE_FN_MISSING_RETURN =
+      DiagnosticType.error(
+          "JSC_LOAD_MODULE_FN_MISSING_RETURN",
+          "goog.loadModule function should end with 'return exports;'");
+
   private static final ImmutableSet<String> USE_STRICT_ONLY = ImmutableSet.of("use strict");
 
   private static final String MODULE_EXPORTS_PREFIX = "module$exports$";
@@ -191,6 +177,8 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
   private static final Node GOOG_MODULE_GET = IR.getprop(GOOG_MODULE.cloneTree(), IR.string("get"));
   private static final Node GOOG_PROVIDE = IR.getprop(IR.name("goog"), IR.string("provide"));
   private static final Node GOOG_REQUIRE = IR.getprop(IR.name("goog"), IR.string("require"));
+  private static final Node GOOG_REQUIRETYPE =
+      IR.getprop(IR.name("goog"), IR.string("requireType"));
 
   private final AbstractCompiler compiler;
   private final PreprocessorSymbolTable preprocessorSymbolTable;
@@ -392,7 +380,9 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
           } else if (method.matchesQualifiedName(GOOG_PROVIDE)) {
             recordGoogProvide(t, n);
           } else if (method.matchesQualifiedName(GOOG_REQUIRE)) {
-            recordGoogRequire(t, n, true /** mustBeOrdered */);
+            recordGoogRequire(t, n, /* mustBeOrdered= */ true);
+          } else if (method.matchesQualifiedName(GOOG_REQUIRETYPE)) {
+            recordGoogRequireType(t, n);
           } else if (method.matchesQualifiedName(GOOG_FORWARDDECLARE) && !parent.isExprResult()) {
             recordGoogForwardDeclare(t, n);
           } else if (method.matchesQualifiedName(GOOG_MODULE_GET)) {
@@ -471,7 +461,8 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
             updateGoogModule(n);
           } else if (method.matchesQualifiedName(GOOG_MODULE_DECLARELEGACYNAMESPACE)) {
             updateGoogDeclareLegacyNamespace(n);
-          } else if (method.matchesQualifiedName(GOOG_REQUIRE)) {
+          } else if (method.matchesQualifiedName(GOOG_REQUIRE)
+              || method.matchesQualifiedName(GOOG_REQUIRETYPE)) {
             updateGoogRequire(t, n);
           } else if (method.matchesQualifiedName(GOOG_FORWARDDECLARE) && !parent.isExprResult()) {
             updateGoogForwardDeclare(t, n);
@@ -539,45 +530,58 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
             return;
           }
           // A type name that might be simple like "Foo" or qualified like "foo.Bar".
-          String typeName = typeRefNode.getString();
+          final String typeName = typeRefNode.getString();
+          int dot = typeName.indexOf('.');
+          String rootOfType = dot == -1 ? typeName : typeName.substring(0, dot);
 
-          // Tries to rename progressively shorter type prefixes like "foo.Bar.Baz", "foo.Bar",
-          // "foo".
-          String prefixTypeName = typeName;
-          String suffix = "";
-          do {
-            // If the name is an alias for an imported namespace rewrite from
-            // "{Foo}" to
-            // "{module$exports$bar$Foo}" or
-            // "{bar.Foo}"
-            boolean nameIsAnAlias =
-                currentScript.namesToInlineByAlias.containsKey(prefixTypeName);
-            if (nameIsAnAlias) {
-              if (preprocessorSymbolTable != null) {
-                // Jsdoc type node is a single STRING node that spans the whole type. For example
-                // STRING node "bar.Foo". When rewriting modules potentially replace only "module"
-                // part of the type: "bar.Foo" => "module$exports$bar$Foo". So we need to remember
-                // that "bar" as alias. To do that we clone type node and make "bar" node from it.
-                Node moduleOnlyNode = typeRefNode.cloneNode();
-                safeSetString(moduleOnlyNode, prefixTypeName);
-                moduleOnlyNode.setLength(prefixTypeName.length());
-                maybeAddAliasToSymbolTable(moduleOnlyNode, currentScript.legacyNamespace);
-              }
+          // Rewrite the type node if any of the following hold, in priority order:
+          //  - the root of the type name is in our set of aliases to inline
+          //  - the root of the type name is a name defined in the module scope
+          //  - a prefix of the type name matches a Closure namespace
+          // TODO(b/135536377): skip rewriting if the root name is from an inner scope in the module
 
-              String aliasedNamespace = currentScript.namesToInlineByAlias.get(prefixTypeName);
-              safeSetString(typeRefNode, aliasedNamespace + suffix);
-              return;
+          // If the name is an alias for an imported namespace rewrite from
+          // "{Foo}" to
+          // "{module$exports$bar$Foo}" or
+          // "{bar.Foo}"
+          if (currentScript.namesToInlineByAlias.containsKey(rootOfType)) {
+            if (preprocessorSymbolTable != null) {
+              // Jsdoc type node is a single STRING node that spans the whole type. For example
+              // STRING node "bar.Foo". When rewriting modules potentially replace only "module"
+              // part of the type: "bar.Foo" => "module$exports$bar$Foo". So we need to remember
+              // that "bar" as alias. To do that we clone type node and make "bar" node from it.
+              Node moduleOnlyNode = typeRefNode.cloneNode();
+              safeSetString(moduleOnlyNode, rootOfType);
+              moduleOnlyNode.setLength(rootOfType.length());
+              maybeAddAliasToSymbolTable(moduleOnlyNode, currentScript.legacyNamespace);
             }
 
+            String aliasedNamespace = currentScript.namesToInlineByAlias.get(rootOfType);
+            String remainder = dot == -1 ? "" : typeName.substring(dot);
+            safeSetString(typeRefNode, aliasedNamespace + remainder);
+          } else if (currentScript.isModule && currentScript.topLevelNames.contains(rootOfType)) {
             // If this is a module and the type name is the name of a top level var/function/class
             // defined in this script then that var will have been previously renamed from Foo to
             // module$contents$Foo_Foo. Update the JsDoc reference to match.
-            if (currentScript.isModule && currentScript.topLevelNames.contains(prefixTypeName)) {
-              safeSetString(typeRefNode, currentScript.contentsPrefix + typeName);
-              return;
-            }
+            safeSetString(typeRefNode, currentScript.contentsPrefix + typeName);
+          } else {
+            rewriteIfClosureNamespaceRef(typeName, typeRefNode);
+          }
+        }
 
+        /**
+         * Tries to match the longest possible prefix of this type to a Closure namespace
+         *
+         * <p>If the longest prefix match is a legacy module or provide, this is a no-op. If the
+         * longest prefix match is a non-legacy module, this method rewrites the type node.
+         */
+        private void rewriteIfClosureNamespaceRef(String typeName, Node typeRefNode) {
+          // Tries to rename progressively shorter type prefixes like "foo.Bar.Baz", then "foo.Bar",
+          // then "foo".
+          String prefixTypeName = typeName;
+          String suffix = "";
 
+          while (true) {
             String binaryNamespaceIfModule = rewriteState.getBinaryNamespace(prefixTypeName);
             if (legacyScriptNamespacesAndPrefixes.contains(prefixTypeName)
                 && binaryNamespaceIfModule == null) {
@@ -589,6 +593,7 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
             // If the typeName is a reference to a fully qualified legacy namespace like
             // "foo.bar.Baz" of something that is actually a module then rewrite the JsDoc reference
             // to "module$exports$Bar".
+            // Note: we may want to ban this pattern in the future. See b/133501660.
             if (binaryNamespaceIfModule != null) {
               safeSetString(typeRefNode, binaryNamespaceIfModule + suffix);
               return;
@@ -596,11 +601,11 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
 
             if (prefixTypeName.contains(".")) {
               prefixTypeName = prefixTypeName.substring(0, prefixTypeName.lastIndexOf('.'));
-              suffix = typeName.substring(prefixTypeName.length(), typeName.length());
+              suffix = typeName.substring(prefixTypeName.length());
             } else {
-              return;
+              break;
             }
-          } while (true);
+          }
         }
       };
 
@@ -681,8 +686,12 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
             moduleBody.setToken(Token.MODULE_BODY);
             n.replaceWith(moduleBody);
             Node returnNode = moduleBody.getLastChild();
-            checkState(returnNode.isReturn(), returnNode);
-            returnNode.detach();
+            if (!returnNode.isReturn()) {
+              compiler.report(JSError.make(moduleBody, LOAD_MODULE_FN_MISSING_RETURN));
+            } else {
+              returnNode.detach();
+            }
+            t.reportCodeChange();
           }
           return false;
         default:
@@ -784,7 +793,7 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
     }
   }
 
-  private static boolean isNamedExportsLiteral(Node objLit) {
+  static boolean isNamedExportsLiteral(Node objLit) {
     if (!objLit.isObjectLit() || !objLit.hasChildren()) {
       return false;
     }
@@ -879,6 +888,21 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
     }
   }
 
+  private void recordGoogRequireType(NodeTraversal t, Node call) {
+    Node legacyNamespaceNode = call.getLastChild();
+    if (!legacyNamespaceNode.isString()) {
+      t.report(legacyNamespaceNode, INVALID_REQUIRE_TYPE_NAMESPACE);
+      return;
+    }
+
+    // A goog.requireType call is not required to appear after the corresponding namespace
+    // definition.
+    boolean mustBeOrdered = false;
+
+    // For purposes of import collection, goog.requireType is the same as goog.require.
+    recordGoogRequire(t, call, mustBeOrdered);
+  }
+
   private void recordGoogForwardDeclare(NodeTraversal t, Node call) {
     Node namespaceNode = call.getLastChild();
     if (!call.hasTwoChildren() || !namespaceNode.isString()) {
@@ -891,7 +915,7 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
     // goog.module.get(). To avoid reporting the error twice suppress it here.
     boolean mustBeOrdered = false;
 
-    // For purposes of import collection goog.forwardDeclare is the same as goog.require;
+    // For purposes of import collection, goog.forwardDeclare is the same as goog.require.
     recordGoogRequire(t, call, mustBeOrdered);
   }
 
@@ -1271,7 +1295,8 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
         && nameNode.getParent().isStringKey()
         && nameNode.getGrandparent().isObjectPattern()) {
       Node destructuringLhsNode = nameNode.getGrandparent().getParent();
-      if (isCallTo(destructuringLhsNode.getLastChild(), GOOG_REQUIRE)) {
+      if (isCallTo(destructuringLhsNode.getLastChild(), GOOG_REQUIRE)
+          || isCallTo(destructuringLhsNode.getLastChild(), GOOG_REQUIRETYPE)) {
         return;
       }
     }
@@ -1662,7 +1687,19 @@ final class ClosureRewriteModule implements HotSwapCompilerPass {
       case CONST:
         {
           Node rhs = nameNode.hasChildren() ? nameNode.getLastChild().detach() : null;
+          if (jsdoc == null) {
+            // Get inline JSDocInfo if there is no JSDoc on the actual declaration.
+            jsdoc = nameNode.getJSDocInfo();
+          }
           Node newStatement = NodeUtil.newQNameDeclaration(compiler, newString, rhs, jsdoc);
+          if (NodeUtil.isExprAssign(newStatement) && nameParent.isConst()) {
+            // When replacing `const name = ...;` with `some.prop = ...`, ensure that `some.prop`
+            // is annotated @const.
+            JSDocInfoBuilder jsdocBuilder = JSDocInfoBuilder.maybeCopyFrom(jsdoc);
+            jsdocBuilder.recordConstancy();
+            jsdoc = jsdocBuilder.build();
+            newStatement.getOnlyChild().setJSDocInfo(jsdoc);
+          }
           newStatement.useSourceInfoIfMissingFromForTree(nameParent);
           int nameLength =
               nameNode.getOriginalName() != null

@@ -59,20 +59,17 @@ SourceInfo.prototype.facing;
 function MediaSettingsRange() {}
 
 /**
- * @type {number}
- * @const
+ * @const {number}
  */
 MediaSettingsRange.prototype.max;
 
 /**
- * @type {number}
- * @const
+ * @const {number}
  */
 MediaSettingsRange.prototype.min;
 
 /**
- * @type {number}
- * @const
+ * @const {number}
  */
 MediaSettingsRange.prototype.step;
 
@@ -304,27 +301,17 @@ MediaTrackSupportedConstraints.prototype.groupId;
 function MediaStreamTrack() {}
 
 /**
- * @param {!function(!Array<!SourceInfo>)} callback
- * @return {undefined}
- * @deprecated Use MediaDevices.enumerateDevices().
- */
-MediaStreamTrack.getSources = function(callback) {};
-
-/**
- * @type {string}
- * @const
+ * @const {string}
  */
 MediaStreamTrack.prototype.kind;
 
 /**
- * @type {string}
- * @const
+ * @const {string}
  */
 MediaStreamTrack.prototype.id;
 
 /**
- * @type {string}
- * @const
+ * @const {string}
  */
 MediaStreamTrack.prototype.label;
 
@@ -334,8 +321,7 @@ MediaStreamTrack.prototype.label;
 MediaStreamTrack.prototype.enabled;
 
 /**
- * @type {boolean}
- * @const
+ * @const {boolean}
  */
 MediaStreamTrack.prototype.muted;
 
@@ -347,8 +333,7 @@ MediaStreamTrack.prototype.muted;
 MediaStreamTrack.prototype.contentHint;
 
 /**
- * @type {boolean}
- * @const
+ * @const {boolean}
  */
 MediaStreamTrack.prototype.remote;
 
@@ -423,8 +408,7 @@ var MediaStreamTrackEventInit;
 function MediaStreamTrackEvent(type, eventInitDict) {}
 
 /**
- * @type {!MediaStreamTrack}
- * @const
+ * @const {!MediaStreamTrack}
  */
 MediaStreamTrackEvent.prototype.track;
 
@@ -457,14 +441,12 @@ MediaStream.prototype.dispatchEvent = function(evt) {};
 /**
  * TODO(bemasc): Remove this property.
  * @deprecated
- * @type {string}
- * @const
+ * @const {string}
  */
 MediaStream.prototype.label;
 
 /**
- * @type {string}
- * @const
+ * @const {string}
  */
 MediaStream.prototype.id;
 
@@ -552,13 +534,6 @@ MediaStream.prototype.onremovetrack;
 MediaStream.prototype.stop = function() {};
 
 /**
- * @type {function(new: MediaStream,
- *                 (!MediaStream|!Array<!MediaStreamTrack>)=)}
- */
-var webkitMediaStream;
-
-
-/**
  * @typedef {{tone: string}}
  * @see https://www.w3.org/TR/webrtc/#dom-rtcdtmftonechangeeventinit
  */
@@ -622,22 +597,48 @@ RTCRtpSender.prototype.dtmf;
 RTCRtpSender.prototype.track;
 
 /**
- * @param {!MediaStreamTrack} track
+ * @param {?MediaStreamTrack} track
+ * @return {!Promise<void>}
+ * @see https://www.w3.org/TR/webrtc/#dom-rtcrtpsender
  */
 RTCRtpSender.prototype.replaceTrack = function(track) {};
 
 
 /**
- * @return {!Object}
+ * @return {!RTCRtpSendParameters}
  */
 RTCRtpSender.prototype.getParameters = function() {};
 
 
 /**
- * @param {!Object} params
+ * @param {!RTCRtpSendParameters} params
  * @return {!Promise<undefined>}
  */
 RTCRtpSender.prototype.setParameters = function(params) {};
+
+
+/**
+ * @record
+ * @see https://www.w3.org/TR/webrtc/#dom-rtcrtpsendparameters
+ */
+function RTCRtpSendParameters() {}
+
+/**
+ * @type {string|undefined}
+ */
+RTCRtpSendParameters.prototype.transactionId;
+
+/**
+ * @type {!Array<!RTCRtpEncodingParameters>}
+ */
+RTCRtpSendParameters.prototype.encodings;
+
+/**
+ * Possible string values are "maintain-framerate", "maintain-resolution", and
+ * "balanced".
+ * @type {string|undefined}
+ */
+RTCRtpSendParameters.prototype.degradationPreference;
 
 
 /**
@@ -652,10 +653,14 @@ function RTCRtpContributingSource() {}
 RTCRtpContributingSource.prototype.source;
 
 /**
- * @type {?Date}
+ * @type {?Date|number}
  */
 RTCRtpContributingSource.prototype.timestamp;
 
+/**
+ * @type {number|undefined}
+ */
+RTCRtpContributingSource.prototype.audioLevel;
 
 /**
  * @interface
@@ -677,6 +682,13 @@ RTCRtpReceiver.prototype.getContributingSources = function() {};
  * @return {!Array<!RTCRtpContributingSource>}
  */
 RTCRtpReceiver.prototype.getSynchronizationSources = function() {};
+
+/**
+ * Chrome extension to control jitter buffer delay.
+ * @see https://github.com/henbos/webrtc-timing/issues/1
+ * @type {?number|undefined}
+ */
+RTCRtpReceiver.prototype.jitterBufferDelayHint;
 
 /**
  * @see https://www.w3.org/TR/webrtc/#dom-rtcrtptransceiverinit
@@ -730,6 +742,13 @@ RTCRtpEncodingParameters.prototype.active;
 RTCRtpEncodingParameters.prototype.priority;
 
 /**
+ * Possible values are "very-low", "low" (default), "medium", and "high".
+ * @see https://w3c.github.io/webrtc-dscp-exp/
+ * @type {?string|undefined}
+ */
+RTCRtpEncodingParameters.prototype.networkPriority;
+
+/**
  * @type {?number|undefined}
  */
 RTCRtpEncodingParameters.prototype.ptime;
@@ -771,7 +790,7 @@ RTCRtpTransceiver.prototype.mid;
 RTCRtpTransceiver.prototype.stopped;
 
 /**
- * @const {!RTCRtpTransceiverDirection}
+ * @type {!RTCRtpTransceiverDirection}
  */
 RTCRtpTransceiver.prototype.direction;
 
@@ -1042,11 +1061,10 @@ MediaStreamConstraints.prototype.video;
 function NavigatorUserMediaError() {}
 
 /**
- * @type {number}
+ * @const {number}
  * @deprecated Removed from the standard and some browsers.
- * @const
  */
-NavigatorUserMediaError.prototype.PERMISSION_DENIED;  /** 1 */
+NavigatorUserMediaError.prototype.PERMISSION_DENIED;
 
 /**
  * @type {number}
@@ -1074,19 +1092,6 @@ NavigatorUserMediaError.prototype.message;
 NavigatorUserMediaError.prototype.constraintName;
 
 /**
- * @param {MediaStreamConstraints} constraints A MediaStreamConstraints object.
- * @param {function(!MediaStream)} successCallback
- *     A NavigatorUserMediaSuccessCallback function.
- * @param {function(!NavigatorUserMediaError)=} errorCallback A
- *     NavigatorUserMediaErrorCallback function.
- * @see http://dev.w3.org/2011/webrtc/editor/getusermedia.html
- * @see https://www.w3.org/TR/mediacapture-streams/
- * @return {undefined}
- */
-Navigator.prototype.webkitGetUserMedia =
-  function(constraints, successCallback, errorCallback) {};
-
-/**
  * @param {string} type
  * @param {!Object} eventInitDict
  * @constructor
@@ -1094,8 +1099,7 @@ Navigator.prototype.webkitGetUserMedia =
 function MediaStreamEvent(type, eventInitDict) {}
 
 /**
- * @type {?MediaStream}
- * @const
+ * @const {?MediaStream}
  */
 MediaStreamEvent.prototype.stream;
 
@@ -1223,6 +1227,21 @@ MediaRecorder.prototype.requestData = function() {};
 MediaRecorder.isTypeSupported = function(type) {};
 
 /**
+ * @constructor
+ * @extends {Event}
+ * @param {string} type
+ * @param {{data: !Blob, timecode: (number|undefined)}} eventInitDict
+ * @see https://www.w3.org/TR/mediastream-recording/#blobevent-section
+ */
+function BlobEvent(type, eventInitDict) {}
+
+/** @type {!Blob} */
+BlobEvent.prototype.data;
+
+/** @type {number} */
+BlobEvent.prototype.timecode;
+
+/**
  * @interface
  * @see https://w3c.github.io/mediacapture-image/##photosettings-section
  */
@@ -1255,26 +1274,22 @@ PhotoSettings.prototype.redEyeReduction;
 function PhotoCapabilities() {}
 
 /**
- * @type {string}
- * @const
+ * @const {string}
  */
 PhotoCapabilities.prototype.redEyeReduction;
 
 /**
- * @type {!MediaSettingsRange}
- * @const
+ * @const {!MediaSettingsRange}
  */
 PhotoCapabilities.prototype.imageHeight;
 
 /**
- * @type {!MediaSettingsRange}
- * @const
+ * @const {!MediaSettingsRange}
  */
 PhotoCapabilities.prototype.imageWidth;
 
 /**
- * @type {!Array<!string>}
- * @const
+ * @const {!Array<string>}
  */
 PhotoCapabilities.prototype.fillLightMode;
 
@@ -1302,8 +1317,7 @@ ImageCapture.prototype.getPhotoCapabilities = function() {};
 ImageCapture.prototype.grabFrame = function() {};
 
 /**
- * @type {!MediaStreamTrack}
- * @const
+ * @const {!MediaStreamTrack}
  */
 ImageCapture.prototype.track;
 
@@ -1316,26 +1330,22 @@ ImageCapture.prototype.track;
 function RTCTrackEvent(type, eventInitDict) {}
 
 /**
- * @type {?RTCRtpReceiver}
- * @const
+ * @const {?RTCRtpReceiver}
  */
 RTCTrackEvent.prototype.receiver;
 
 /**
- * @type {?MediaStreamTrack}
- * @const
+ * @const {?MediaStreamTrack}
  */
 RTCTrackEvent.prototype.track;
 
 /**
- * @type {?Array<!MediaStream>}
- * @const
+ * @const {?Array<!MediaStream>}
  */
 RTCTrackEvent.prototype.streams;
 
 /**
- * @type {?RTCRtpTransceiver}
- * @const
+ * @const {?RTCRtpTransceiver}
  */
 RTCTrackEvent.prototype.transceiver;
 
@@ -1487,7 +1497,7 @@ RTCIceCandidate.prototype.sdpMid;
 RTCIceCandidate.prototype.sdpMLineIndex;
 
 /**
- * @typedef {{urls: string}|{urls: !Array<!string>}}
+ * @typedef {{urls: string}|{urls: !Array<string>}}
  * @private
  * @see https://www.w3.org/TR/webrtc/#rtciceserver-dictionary
  * This dictionary type also has an optional key {credential: ?string}.
@@ -1501,7 +1511,7 @@ var RTCIceServerRecord_;
 function RTCIceServerInterface_() {}
 
 /**
- * @type {string|!Array<!string>}
+ * @type {string|!Array<string>}
  */
 RTCIceServerInterface_.prototype.urls;
 
@@ -1524,7 +1534,10 @@ RTCIceServerInterface_.prototype.credential;
 var RTCIceServer;
 
 /**
- * @typedef {{iceServers: !Array<!RTCIceServer>}}
+ * @typedef {{
+ *   iceServers: !Array<!RTCIceServer>,
+ *   sdpSemantics: (string|undefined)
+ * }}
  * @private
  */
 var RTCConfigurationRecord_;
@@ -1539,6 +1552,15 @@ function RTCConfigurationInterface_() {}
  * @type {!Array<!RTCIceServer>}
  */
 RTCConfigurationInterface_.prototype.iceServers;
+
+/**
+ * Allows specifying the SDP semantics. Valid values are "plan-b" and
+ * "unified-plan".
+ *
+ * @see {@link https://webrtc.org/web-apis/chrome/unified-plan/}
+ * @type {string|undefined}
+ */
+RTCConfigurationInterface_.prototype.sdpSemantics;
 
 /**
  * @typedef {RTCConfigurationRecord_|RTCConfigurationInterface_}
@@ -1583,8 +1605,7 @@ var RTCIceGatheringState;
 function RTCPeerConnectionIceEvent(type, eventInitDict) {}
 
 /**
- * @type {RTCIceCandidate}
- * @const
+ * @const {RTCIceCandidate}
  */
 RTCPeerConnectionIceEvent.prototype.candidate;
 
@@ -1593,18 +1614,73 @@ RTCPeerConnectionIceEvent.prototype.candidate;
 // modern browsers, breaking compatibility with older versions as they become
 // obsolete.
 /**
+ * @see https://www.w3.org/TR/webrtc/#dom-rtcstats
+ * @interface
+ */
+function RTCStats() {}
+
+/**
+ * @const {?Date|number}
+ */
+RTCStats.prototype.timestamp;
+
+/**
+ * https://www.w3.org/TR/webrtc-stats/#rtcstatstype-str*
+ * @const {string}
+ */
+RTCStats.prototype.type;
+
+/**
+ * @const {string}
+ */
+RTCStats.prototype.id;
+
+/**
+ * @see https://www.w3.org/TR/webrtc-stats/#dom-rtcrtpstreamstats
+ * @interface
+ * @extends {RTCStats}
+ */
+function RTCStreamStats() {}
+
+/** @const {number} */
+RTCStreamStats.prototype.ssrc;
+
+/** @const {string} */
+RTCStreamStats.prototype.kind;
+
+/** @const {string} */
+RTCStreamStats.prototype.transportId;
+
+/** @const {string} */
+RTCStreamStats.prototype.codecId;
+
+/** @const {number} */
+RTCStreamStats.prototype.firCount;
+
+/** @const {number} */
+RTCStreamStats.prototype.pliCount;
+
+/** @const {number} */
+RTCStreamStats.prototype.nackCount;
+
+/** @const {number} */
+RTCStreamStats.prototype.sliCount;
+
+/** @const {number} */
+RTCStreamStats.prototype.qpSum;
+
+/**
  * @interface
  */
 function RTCStatsReport() {}
 
 /**
- * @type {Date}
- * @const
+ * @const {?Date|number}
  */
 RTCStatsReport.prototype.timestamp;
 
 /**
- * @return {!Array<!string>}
+ * @return {!Array<string>}
  */
 RTCStatsReport.prototype.names = function() {};
 
@@ -1616,27 +1692,23 @@ RTCStatsReport.prototype.stat = function(name) {};
 
 /**
  * @deprecated
- * @type {RTCStatsReport}
- * @const
+ * @const {RTCStatsReport}
  */
 RTCStatsReport.prototype.local;
 
 /**
  * @deprecated
- * @type {RTCStatsReport}
- * @const
+ * @const {RTCStatsReport}
  */
 RTCStatsReport.prototype.remote;
 
 /**
- * @type {string}
- * @const
+ * @const {string}
  */
 RTCStatsReport.prototype.type;
 
 /**
- * @type {string}
- * @const
+ * @const {string}
  */
 RTCStatsReport.prototype.id;
 
@@ -1645,26 +1717,51 @@ RTCStatsReport.prototype.id;
 // Mozilla.
 // See https://www.w3.org/TR/webrtc/#rtcstatsreport-object for definition.
 /**
- * @param {function(this:SCOPE, Object, string, MAP)} callback
+ * @param {function(this:SCOPE, !RTCStats, string, MAP)} callback
  * @param {SCOPE=} opt_thisObj The value of "this" inside callback function.
  * @this {MAP}
  * @template MAP,SCOPE
- * @readonly
  */
 RTCStatsReport.prototype.forEach = function(callback, opt_thisObj) {};
 
 /**
  * @param {string} key
- * @return {Object}
- * @readonly
+ * @return {!IteratorIterable<!Array<string|!RTCStats>>}
+ */
+RTCStatsReport.prototype.entries = function(key) {};
+
+/**
+ * @param {string} key
+ * @return {!RTCStats}
  */
 RTCStatsReport.prototype.get = function(key) {};
 
 /**
  * @return {!IteratorIterable<string>}
- * @readonly
  */
 RTCStatsReport.prototype.keys = function() {};
+
+/**
+ * @return {!IteratorIterable<!RTCStats>}
+ */
+RTCStatsReport.prototype.values = function() {};
+
+/**
+ * @param {string} key
+ * @return {boolean}
+ */
+RTCStatsReport.prototype.has = function(key) {};
+
+/**
+ * @const {number}
+ */
+RTCStatsReport.prototype.size;
+
+/**
+ * @return {!Iterator<!Array<string|!RTCStats>>}
+ */
+RTCStatsReport.prototype[Symbol.iterator] = function() {};
+
 
 /**
  * TODO(bemasc): Remove this type once it is no longer in use.  It has already
@@ -1760,14 +1857,12 @@ var MediaConstraints;
 function RTCDataChannel() {}
 
 /**
- * @type {string}
- * @const
+ * @const {string}
  */
 RTCDataChannel.prototype.label;
 
 /**
- * @type {boolean}
- * @const
+ * @const {boolean}
  */
 RTCDataChannel.prototype.reliable;
 
@@ -1848,14 +1943,15 @@ function RTCDataChannelInitInterface_() {}
 RTCDataChannelInitInterface_.prototype.reliable;
 
 /**
- * @typedef {Object}
- * @property {boolean=} [ordered=true]
- * @property {number=} maxPacketLifeTime
- * @property {number=} maxRetransmits
- * @property {string=} [protocol=""]
- * @property {boolean=} [negotiated=false]
- * @property {number=} id
- * @property {string=} [priority='low']
+ * @typedef {{
+ *   ordered: (boolean|undefined),
+ *   maxPacketLifeTime: (number|undefined),
+ *   maxRetransmits: (number|undefined),
+ *   protocol: (string|undefined),
+ *   negotiated: (boolean|undefined),
+ *   id: (number|undefined),
+ *   priority: (string|undefined),
+ * }}
  * see https://www.w3.org/TR/webrtc/#dom-rtcdatachannelinit for documentation
  * Type inconsistencies due to Closure limitations:
  * maxPacketLifeTime should be UnsignedShort
@@ -1883,6 +1979,7 @@ var RTCCertificate;
  * @param {!MediaConstraints=} constraints
  * @constructor
  * @implements {EventTarget}
+ * @see https://www.w3.org/TR/webrtc/#interface-definition
  */
 function RTCPeerConnection(configuration, constraints) {}
 
@@ -1984,7 +2081,7 @@ RTCPeerConnection.prototype.updateIce = function(configuration, constraints) {};
  * Void in Chrome for now, a promise that you can then/catch in Firefox.
  * @param {!RTCIceCandidate} candidate
  * @param {!RTCVoidCallback=} successCallback
- * @param {!function(DOMException)=} errorCallback
+ * @param {function(DOMException)=} errorCallback
  * @return {!Promise|undefined}
  */
 RTCPeerConnection.prototype.addIceCandidate = function(candidate, successCallback, errorCallback) {};
@@ -2114,6 +2211,11 @@ RTCPeerConnection.prototype.onicecandidate;
 /**
  * @type {?function(!Event)}
  */
+RTCPeerConnection.prototype.onicegatheringstatechange;
+
+/**
+ * @type {?function(!Event)}
+ */
 RTCPeerConnection.prototype.onsignalingstatechange;
 
 /**
@@ -2140,8 +2242,3 @@ RTCPeerConnection.prototype.oniceconnectionstatechange;
  * @type {?function(!RTCDataChannelEvent)}
  */
 RTCPeerConnection.prototype.ondatachannel;
-
-/**
- * @const
- */
-var webkitRTCPeerConnection = RTCPeerConnection;

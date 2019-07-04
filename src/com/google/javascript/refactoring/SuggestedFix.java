@@ -395,10 +395,21 @@ public final class SuggestedFix {
 
       int start;
       JSDocInfo jsdoc = NodeUtil.getBestJSDocInfo(first);
+      String associatedNonJSDocComment = first.getNonJSDocCommentString();
       if (jsdoc == null) {
         start = first.getSourceOffset();
+        if (!"".equals(associatedNonJSDocComment)) {
+          start = start - associatedNonJSDocComment.length() - 1;
+        }
       } else {
         start = jsdoc.getOriginalCommentPosition();
+        if (!"".equals(associatedNonJSDocComment)) {
+          if (start + jsdoc.getOriginalCommentString().length()
+              > first.getSourceOffset() - associatedNonJSDocComment.length()) {
+            // nonJSDoc comment is placed before the JSDoc comment. Update start position.
+            start = start - associatedNonJSDocComment.length() - 1;
+          }
+        }
       }
 
       int end = last.getSourceOffset() + last.getLength();
@@ -809,35 +820,6 @@ public final class SuggestedFix {
       HasAliasedRequireOrModuleCallback callback = new HasAliasedRequireOrModuleCallback(metadata);
       NodeTraversal.traverse(metadata.getCompiler(), script, callback);
       return callback.getUsesAliasedRequires();
-    }
-
-    /**
-     * Merge names from the lhs of |requireToMergeFrom|, which must be a destructuring require, if
-     * there is another destructuring require that its lhs can be merged into. If not, then no
-     * change is applied.
-     */
-    Builder mergeGoogRequire(
-        Node requireToMergeFrom, NodeMetadata m, String namespace, AbstractCompiler compiler) {
-      checkArgument(requireToMergeFrom.getFirstChild().isDestructuringLhs(), requireToMergeFrom);
-      checkArgument(requireToMergeFrom.getFirstFirstChild().isObjectPattern(), requireToMergeFrom);
-
-      Node googRequireNode = findGoogRequireNode(requireToMergeFrom, m, namespace);
-      if (googRequireNode == null) {
-        return this;
-      }
-      if (googRequireNode.isExprResult()) {
-        return this;
-      }
-      if (googRequireNode.getFirstChild().isDestructuringLhs()) {
-        Node objectPattern = googRequireNode.getFirstFirstChild();
-        Node newObjectPattern = objectPattern.cloneTree();
-        for (Node name : requireToMergeFrom.getFirstFirstChild().children()) {
-          newObjectPattern.addChildToBack(name.cloneTree());
-        }
-        this.replace(objectPattern, newObjectPattern, compiler);
-        this.deleteWithoutRemovingWhitespace(requireToMergeFrom);
-      }
-      return this;
     }
 
     /**

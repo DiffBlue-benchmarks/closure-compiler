@@ -33,6 +33,11 @@ import static com.google.javascript.jscomp.CheckAccessControls.EXTEND_FINAL_CLAS
 import static com.google.javascript.jscomp.CheckAccessControls.PRIVATE_OVERRIDE;
 import static com.google.javascript.jscomp.CheckAccessControls.VISIBILITY_MISMATCH;
 
+import com.google.common.collect.ImmutableList;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /**
  * Tests for {@link CheckAccessControls} specifically for ES6 class syntax.
@@ -42,24 +47,30 @@ import static com.google.javascript.jscomp.CheckAccessControls.VISIBILITY_MISMAT
  * similar case should be added here under the same name using `class`.
  */
 
+@RunWith(JUnit4.class)
 public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
+
+  private static final String CLOSURE_PRIMITIVES =
+      lines(
+          "/** @const */",
+          "var goog = {};",
+          "goog.module = function(ns) {};",
+          "/** @return {?} */",
+          "goog.require = function(ns) {};");
 
   public CheckAccessControlsEs6ClassTest() {
     super(CompilerTypeTestCase.DEFAULT_EXTERNS);
   }
 
   @Override
-  protected void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     super.setUp();
     enableTypeCheck();
     enableParseTypeInfo();
     enableClosurePass();
     enableRewriteClosureCode();
-  }
-
-  @Override
-  protected int getNumRepetitions() {
-    return 1;
+    enableCreateModuleMap();
   }
 
   @Override
@@ -76,6 +87,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
     return options;
   }
 
+  @Test
   public void testWarningInNormalClass() {
     test(
         srcs(
@@ -88,6 +100,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         deprecatedName("Variable f has been deprecated: FooBar"));
   }
 
+  @Test
   public void testWarningForProperty1() {
     test(
         srcs(
@@ -99,6 +112,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         deprecatedProp("Property bar of type Foo has been deprecated: A property is bad"));
   }
 
+  @Test
   public void testWarningForProperty2() {
     test(
         srcs(
@@ -111,6 +125,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
             "Property bar of type Foo has been deprecated: Zee prop, it is deprecated!"));
   }
 
+  @Test
   public void testWarningForDeprecatedClass() {
     test(
         srcs(
@@ -122,6 +137,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         deprecatedClass("Class Foo has been deprecated: Use the class 'Bar'"));
   }
 
+  @Test
   public void testWarningForDeprecatedClassNoReason() {
     test(
         srcs(
@@ -133,6 +149,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(DEPRECATED_CLASS));
   }
 
+  @Test
   public void testNoWarningForDeprecatedClassInstance() {
     test(
         srcs(
@@ -144,6 +161,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "function f(x) { return x; }")));
   }
 
+  @Test
   public void testWarningForDeprecatedSuperClass() {
     test(
         srcs(
@@ -157,6 +175,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         deprecatedClass("Class SubFoo has been deprecated: Superclass to the rescue!"));
   }
 
+  @Test
   public void testWarningForDeprecatedSuperClass2() {
     test(
         srcs(
@@ -174,6 +193,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
             "Class namespace.SubFoo has been deprecated: Its only weakness is Kryptoclass"));
   }
 
+  @Test
   public void testWarningForPrototypeProperty() {
     test(
         srcs(
@@ -188,6 +208,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 + " It is now in production, use that one"));
   }
 
+  @Test
   public void testNoWarningForNumbers() {
     test(
         srcs(
@@ -199,6 +220,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "/** @deprecated */ Foo.prototype.bar = 3;")));
   }
 
+  @Test
   public void testWarningForMethod1() {
     test(
         srcs(
@@ -213,6 +235,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
             "Property bar of type Foo has been deprecated: There is a madness to this method"));
   }
 
+  @Test
   public void testWarningForMethod2() {
     test(
         srcs(
@@ -226,6 +249,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         deprecatedProp("Property bar of type Foo has been deprecated: Stop the ringing!"));
   }
 
+  @Test
   public void testNoWarningInDeprecatedClass() {
     test(
         srcs(
@@ -239,6 +263,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "};")));
   }
 
+  @Test
   public void testNoWarningOnDeclaration() {
     test(
         srcs(
@@ -254,6 +279,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testNoWarningInDeprecatedClass2() {
     test(
         srcs(
@@ -267,6 +293,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "};")));
   }
 
+  @Test
   public void testNoWarningInDeprecatedStaticMethod() {
     test(
         srcs(
@@ -280,6 +307,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "};")));
   }
 
+  @Test
   public void testWarningInStaticMethod() {
     test(
         srcs(
@@ -293,6 +321,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         deprecatedName("Variable f has been deprecated: crazy!"));
   }
 
+  @Test
   public void testWarningForSubclassMethod() {
     test(
         srcs(
@@ -313,6 +342,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         deprecatedProp("Property bar of type SubFoo has been deprecated: I have a parent class!"));
   }
 
+  @Test
   public void testWarningForSuperClassWithDeprecatedSubclassMethod() {
     test(
         srcs(
@@ -332,6 +362,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "function f() { (new Foo()).bar(); };")));
   }
 
+  @Test
   public void testWarningForSuperclassMethod() {
     test(
         srcs(
@@ -350,6 +381,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         deprecatedProp("Property bar of type SubFoo has been deprecated: I have a child class!"));
   }
 
+  @Test
   public void testWarningForSuperclassMethod2() {
     test(
         srcs(
@@ -375,6 +407,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
             "Property bar of type SubFoo has been deprecated: I have another child class..."));
   }
 
+  @Test
   public void testWarningForDeprecatedClassInGlobalScope() {
     test(
         srcs(
@@ -386,6 +419,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         deprecatedClass("Class Foo has been deprecated: I'm a very worldly object!"));
   }
 
+  @Test
   public void testNoWarningForPrototypeCopying() {
     test(
         srcs(
@@ -400,6 +434,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "(new Foo()).bar();")));
   }
 
+  @Test
   public void testNoWarningOnDeprecatedPrototype() {
     test(
         srcs(
@@ -410,6 +445,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "Foo.prototype;")));
   }
 
+  @Test
   public void testPrivateAccessForProperties1() {
     test(
         srcs(
@@ -424,6 +460,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "(new Foo).bar_();")));
   }
 
+  @Test
   public void testPrivateAccessForProperties2() {
     test(
         srcs(
@@ -435,6 +472,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "(new Foo).bar_();")));
   }
 
+  @Test
   public void testPrivateAccessForProperties3() {
     // Even though baz is "part of the Foo class" the access is disallowed since it's
     // not in the same file.
@@ -449,6 +487,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testPrivateAccessForProperties4() {
     test(
         srcs(
@@ -462,6 +501,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testPrivateAccessForProperties5() {
     test(
         srcs(
@@ -482,6 +522,22 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
             .withMessage("Access to private property prop of Parent not allowed here."));
   }
 
+  @Test
+  public void testPrivatePropAccess_inSameFile_throughDestructuring() {
+    test(
+        srcs(
+            lines(
+                "class Foo {", //
+                "  /** @private */",
+                "  bar_() { }",
+                "}",
+                "",
+                "function f(/** !Foo */ x) {", //
+                "  const {bar_: bar} = x;",
+                "}")));
+  }
+
+  @Test
   public void testPrivateAccessForProperties6() {
     test(
         srcs(
@@ -506,6 +562,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
             .withMessage("Access to private property prop of x.y.z.Parent not allowed here."));
   }
 
+  @Test
   public void testPrivateAccessToConstructorThroughNew() {
     test(
         srcs(
@@ -518,6 +575,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "new Foo();")));
   }
 
+  @Test
   public void testPrivateAccessToConstructorThroughExtendsClause() {
     test(
         srcs(
@@ -530,6 +588,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "class SubFoo extends Foo { }")));
   }
 
+  @Test
   public void testPrivateAccessToClass() {
     test(
         srcs(
@@ -540,6 +599,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "Foo;")));
   }
 
+  @Test
   public void testPrivateAccess_googModule() {
     test(
         srcs(
@@ -562,6 +622,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
             .withMessage("Access to private property m of One not allowed here."));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties1() {
     test(
         srcs(
@@ -576,6 +637,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties2() {
     test(
         srcs(
@@ -590,6 +652,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties3() {
     test(
         srcs(
@@ -607,6 +670,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties4() {
     test(
         srcs(
@@ -624,6 +688,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties5() {
     test(
         srcs(
@@ -639,6 +704,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties6() {
     // Overriding a private property with a non-private property
     // in a different file causes problems.
@@ -656,6 +722,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties6a() {
     // Same as above, except with namespaced constructors
     test(
@@ -674,6 +741,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties7() {
     // It's OK to override a private property with a non-private property
     // in the same file, but you'll get yelled at when you try to use it.
@@ -692,6 +760,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties8() {
     test(
         srcs(
@@ -712,6 +781,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(PRIVATE_OVERRIDE));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties9() {
     test(
         srcs(
@@ -724,6 +794,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties10() {
     test(
         srcs(
@@ -736,6 +807,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties11() {
     test(
         srcs(
@@ -748,6 +820,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessForProperties12() {
     test(
         srcs(
@@ -760,6 +833,23 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
+  public void testNoPrivatePropAccess_inDifferentFile_throughDestructuring() {
+    test(
+        srcs(
+            lines(
+                "class Foo {", //
+                "  /** @private */",
+                "  bar_() { }",
+                "}"),
+            lines(
+                "function f(/** !Foo */ x) {", //
+                "  const {bar_: bar} = x;",
+                "}")),
+        error(BAD_PRIVATE_PROPERTY_ACCESS));
+  }
+
+  @Test
   public void testNoPrivateAccessToConstructorThroughNew() {
     test(
         srcs(
@@ -772,6 +862,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessToConstructorThroughExtendsClause() {
     test(
         srcs(
@@ -784,6 +875,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPrivateAccessToClass() {
     test(
         srcs(
@@ -794,6 +886,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_GLOBAL_ACCESS));
   }
 
+  @Test
   public void testProtectedAccessForProperties1() {
     test(
         srcs(
@@ -807,6 +900,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
             lines("Foo.prototype.baz = function() { this.bar(); };")));
   }
 
+  @Test
   public void testProtectedAccessForProperties2() {
     test(
         srcs(
@@ -825,6 +919,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testProtectedAccessForProperties3() {
     test(
         srcs(
@@ -841,6 +936,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testProtectedAccessForProperties4() {
     test(
         srcs(
@@ -855,6 +951,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testProtectedAccessForProperties5() {
     test(
         srcs(
@@ -873,6 +970,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testProtectedAccessForProperties6() {
     test(
         srcs(
@@ -892,6 +990,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "};")));
   }
 
+  @Test
   public void testProtectedAccessForProperties7() {
     test(
         srcs(
@@ -911,6 +1010,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "SubFoo.prototype.moo = function() { this.bar(); };")));
   }
 
+  @Test
   public void testProtectedAccessForProperties8() {
     test(
         srcs(
@@ -925,6 +1025,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "};")));
   }
 
+  @Test
   public void testProtectedAccessForProperties9() {
     test(
         srcs(
@@ -941,6 +1042,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "};")));
   }
 
+  @Test
   public void testProtectedAccessForProperties10() {
     test(
         srcs(
@@ -961,6 +1063,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                     "})();"))));
   }
 
+  @Test
   public void testProtectedAccessForProperties11() {
     test(
         srcs(
@@ -987,6 +1090,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                     "};"))));
   }
 
+  @Test
   public void testProtectedAccessForProperties12() {
     test(
         srcs(
@@ -1018,6 +1122,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
   // FYI: Java warns for the b1.method access in c.js.
   // Instead of following that in NTI, we chose to follow the behavior of
   // the old JSCompiler type checker, to make migration easier.
+  @Test
   public void testProtectedAccessForProperties13() {
     test(
         srcs(
@@ -1066,6 +1171,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                     "};"))));
   }
 
+  @Test
   public void testProtectedAccessForProperties14() {
     // access in member function
     test(
@@ -1087,6 +1193,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "OtherFoo.prototype.moo = function() { new Foo().bar(); };")));
   }
 
+  @Test
   public void testProtectedAccessForProperties15() {
     // access in computed member function
     test(
@@ -1109,6 +1216,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "OtherFoo.prototype['bar'] = function() { new Foo().bar(); };")));
   }
 
+  @Test
   public void testProtectedAccessForProperties16() {
     // access in nested arrow function
     test(
@@ -1124,6 +1232,24 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
+  public void testProtectedPropAccess_inDifferentFile_inSubclass_throughDestructuring() {
+    test(
+        srcs(
+            lines(
+                "class Foo {", //
+                "  /** @protected */",
+                "  bar() { }",
+                "}"),
+            lines(
+                "class SubFoo extends Foo {", //
+                "  method(/** !Foo */ x) {",
+                "    const {bar: bar} = x;",
+                "  }",
+                "}")));
+  }
+
+  @Test
   public void testNoProtectedAccess_forOverriddenProperty_elsewhereInSubclassFile() {
     test(
         srcs(
@@ -1144,6 +1270,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROTECTED_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testProtectedAccessToConstructorThroughExtendsClause() {
     test(
         srcs(
@@ -1154,6 +1281,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
             lines("class OtherFoo extends Foo { }")));
   }
 
+  @Test
   public void testProtectedAccessToConstructorThroughSubclassInstanceMethod() {
     test(
         srcs(
@@ -1167,6 +1295,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testProtectedAccessToClassThroughSubclassInstanceMethod() {
     test(
         srcs(
@@ -1179,6 +1308,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testProtectedAccessThroughNestedFunction() {
     test(
         srcs(
@@ -1196,6 +1326,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testProtectedAccessThroughNestedEs5Class() {
     test(
         srcs(
@@ -1217,6 +1348,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testProtectedAccessThroughNestedEs6Class() {
     test(
         srcs(
@@ -1236,6 +1368,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testNoProtectedAccessForProperties1() {
     test(
         srcs(
@@ -1248,6 +1381,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROTECTED_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoProtectedAccessForProperties2() {
     test(
         srcs(
@@ -1265,6 +1399,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROTECTED_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoProtectedAccessForProperties3() {
     test(
         srcs(
@@ -1284,6 +1419,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROTECTED_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoProtectedAccessForProperties4() {
     test(
         srcs(
@@ -1301,6 +1437,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROTECTED_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoProtectedAccessForProperties5() {
     test(
         srcs(
@@ -1320,6 +1457,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROTECTED_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoProtectedAccessForProperties6() {
     test(
         srcs(
@@ -1332,6 +1470,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROTECTED_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoProtectedAccessForProperties7() {
     test(
         srcs(
@@ -1344,6 +1483,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROTECTED_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoProtectedAccessForProperties8() {
     test(
         srcs(
@@ -1363,6 +1503,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROTECTED_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoProtectedAccessForProperties9() {
     test(
         srcs(
@@ -1380,6 +1521,23 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROTECTED_PROPERTY_ACCESS));
   }
 
+  @Test
+  public void testNoProtectedPropAccess_inDifferentFile_throughDestructuring() {
+    test(
+        srcs(
+            lines(
+                "class Foo {", //
+                "  /** @protected */",
+                "  bar() { }",
+                "}"),
+            lines(
+                "function f(/** !Foo */ x) {", //
+                "  const {bar: bar} = x;",
+                "}")),
+        error(BAD_PROTECTED_PROPERTY_ACCESS));
+  }
+
+  @Test
   public void testNoProtectedAccess_forInheritedProperty_elsewhereInSubclassFile() {
     test(
         srcs(
@@ -1396,6 +1554,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROTECTED_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoProtectedAccessToConstructorFromUnrelatedClass() {
     test(
         srcs(
@@ -1411,6 +1570,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROTECTED_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoProtectedAccessForPropertiesWithNoRhs() {
     test(
         srcs(
@@ -1426,6 +1586,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "Bar.prototype.x;")));
   }
 
+  @Test
   public void testPackagePrivateAccessForProperties1() {
     test(
         srcs(
@@ -1440,6 +1601,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "(new Foo).bar();")));
   }
 
+  @Test
   public void testPackagePrivateAccessForProperties2() {
     test(
         srcs(
@@ -1455,6 +1617,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                     "(new Foo).bar();"))));
   }
 
+  @Test
   public void testPackagePrivateAccessForProperties3() {
     test(
         srcs(
@@ -1472,6 +1635,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "Foo.prototype.baz = function() { this.bar(); };")));
   }
 
+  @Test
   public void testPackagePrivateAccessForProperties4() {
     test(
         srcs(
@@ -1487,6 +1651,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "Foo.prototype['baz'] = function() { (new Foo()).bar(); };")));
   }
 
+  @Test
   public void testPackagePrivateAccessForProperties5() {
     test(
         srcs(
@@ -1512,6 +1677,46 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
+  public void testPackagePropAccess_inSamePackage_throughDestructuring() {
+    test(
+        srcs(
+            SourceFile.fromCode(
+                Compiler.joinPathParts("foo", "bar.js"),
+                lines(
+                    "class Foo {", //
+                    "  /** @package */",
+                    "  bar() { }",
+                    "}")),
+            SourceFile.fromCode(
+                Compiler.joinPathParts("foo", "quux.js"),
+                lines(
+                    "function f(/** !Foo */ x) {", //
+                    "  const {bar: bar} = x;",
+                    "}"))));
+  }
+
+  @Test
+  public void testNoPackagePropAccess_inDifferentPackage_throughDestructuring() {
+    test(
+        srcs(
+            SourceFile.fromCode(
+                Compiler.joinPathParts("foo", "bar.js"),
+                lines(
+                    "class Foo {", //
+                    "  /** @package */",
+                    "  bar() { }",
+                    "}")),
+            SourceFile.fromCode(
+                Compiler.joinPathParts("baz", "quux.js"),
+                lines(
+                    "function f(/** !Foo */ x) {", //
+                    "  const {bar: bar} = x;",
+                    "}"))),
+        error(BAD_PACKAGE_PROPERTY_ACCESS));
+  }
+
+  @Test
   public void testPackageAccessToConstructorThroughNew() {
     test(
         srcs(
@@ -1527,6 +1732,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "new Foo();")));
   }
 
+  @Test
   public void testPackageAccessToConstructorThroughExtendsClause() {
     test(
         srcs(
@@ -1542,6 +1748,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "class SubFoo extends Foo { }")));
   }
 
+  @Test
   public void testPackageAccessToClass() {
     test(
         srcs(
@@ -1555,6 +1762,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "Foo;")));
   }
 
+  @Test
   public void testPackageAccessToConstructorThroughNew_fileOveriew() {
     test(
         srcs(
@@ -1571,6 +1779,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "new Foo();")));
   }
 
+  @Test
   public void testPackageAccessToConstructorThroughExtendsClause_fileOveriew() {
     test(
         srcs(
@@ -1587,6 +1796,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "class SubFoo extends Foo { }")));
   }
 
+  @Test
   public void testPackageAccessToClass_fileOveriew() {
     test(
         srcs(
@@ -1601,6 +1811,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "Foo;")));
   }
 
+  @Test
   public void testNoPackagePrivateAccessForProperties1() {
     test(
         srcs(
@@ -1620,6 +1831,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPackagePrivateAccessForProperties2() {
     test(
         srcs(
@@ -1636,6 +1848,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPackagePrivateAccessForProperties3() {
     test(
         srcs(
@@ -1657,6 +1870,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPackagePrivateAccessForProperties4() {
     test(
         srcs(
@@ -1678,6 +1892,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPackagePrivateAccessForProperties5() {
     test(
         srcs(
@@ -1697,6 +1912,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPackagePrivateAccessForProperties6() {
     // Overriding a private property with a non-package-private property
     // in a different file causes problems.
@@ -1718,6 +1934,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPackagePrivateAccessForProperties7() {
     // It's OK to override a package-private property with a
     // non-package-private property in the same file, but you'll get
@@ -1741,6 +1958,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPackgeAccessToConstructorThroughNew() {
     test(
         srcs(
@@ -1757,6 +1975,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPackageAccessToConstructorThroughExtendsClause() {
     test(
         srcs(
@@ -1773,6 +1992,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPackageAccessToClass() {
     test(
         srcs(
@@ -1787,6 +2007,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPackgeAccessToConstructorThroughNew_fileOveriew() {
     test(
         srcs(
@@ -1805,6 +2026,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPackageAccessToConstructorThroughExtendsClause_fileOveriew() {
     test(
         srcs(
@@ -1823,6 +2045,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testNoPackageAccessToClass_fileOveriew() {
     test(
         srcs(
@@ -1838,6 +2061,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void
       testOverrideWithoutVisibilityRedeclInFileWithFileOverviewVisibilityNotAllowed_OneFile() {
     test(
@@ -1860,6 +2084,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROPERTY_OVERRIDE_IN_FILE_WITH_FILEOVERVIEW_VISIBILITY));
   }
 
+  @Test
   public void
       testOverrideWithoutVisibilityRedeclInFileWithFileOverviewVisibilityNotAllowed_TwoFiles() {
     test(
@@ -1882,6 +2107,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PROPERTY_OVERRIDE_IN_FILE_WITH_FILEOVERVIEW_VISIBILITY));
   }
 
+  @Test
   public void testOverrideWithoutVisibilityRedeclInFileWithNoFileOverviewOk() {
     test(
         srcs(
@@ -1897,6 +2123,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "};")));
   }
 
+  @Test
   public void testOverrideWithoutVisibilityRedeclInFileWithNoFileOverviewVisibilityOk() {
     test(
         srcs(
@@ -1916,6 +2143,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "};")));
   }
 
+  @Test
   public void testOverrideWithVisibilityRedeclInFileWithFileOverviewVisibilityOk_OneFile() {
     test(
         srcs(
@@ -1936,6 +2164,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "};")));
   }
 
+  @Test
   public void testOverrideWithVisibilityRedeclInFileWithFileOverviewVisibilityOk_TwoFiles() {
     test(
         srcs(
@@ -1956,6 +2185,39 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "};")));
   }
 
+  @Test
+  public void testConstructorVisibility_canBeNarrowed() {
+    test(
+        srcs(
+            lines(
+                "class Foo {", //
+                "  /** @public */",
+                "  constructor() {}",
+                "};"),
+            lines(
+                "class Bar extends Foo {", //
+                "  /** @private */",
+                "  constructor() {}",
+                "};")));
+  }
+
+  @Test
+  public void testConstructorVisibility_canBeExpanded() {
+    test(
+        srcs(
+            lines(
+                "class Foo {", //
+                "  /** @protected */",
+                "  constructor() {}",
+                "};"),
+            lines(
+                "class Bar extends Foo {", //
+                "  /** @public */",
+                "  constructor() {}",
+                "};")));
+  }
+
+  @Test
   public void testPublicFileOverviewVisibilityDoesNotApplyToNameWithExplicitPackageVisibility() {
     test(
         srcs(
@@ -1971,10 +2233,11 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                     "class Foo {}")),
             SourceFile.fromCode(
                 Compiler.joinPathParts("baz", "quux.js"), //
-                "new Foo();")),
+                "Foo;")),
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testPackageFileOverviewVisibilityDoesNotApplyToNameWithExplicitPublicVisibility() {
     test(
         srcs(
@@ -1989,9 +2252,10 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                     "class Foo {}")),
             SourceFile.fromCode(
                 Compiler.joinPathParts("baz", "quux.js"), //
-                "new Foo();")));
+                "Foo;")));
   }
 
+  @Test
   public void testPackageFileOverviewVisibilityAppliesToNameWithoutExplicitVisibility() {
     test(
         srcs(
@@ -2006,10 +2270,54 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                     "var Foo = class {};")),
             SourceFile.fromCode(
                 Compiler.joinPathParts("baz", "quux.js"), //
-                "new Foo();")),
+                "Foo;")),
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
+  public void testPackageFileOverviewVisibilityAppliesToNameWithoutExplicitVisibility_googModule() {
+    disableRewriteClosureCode();
+    testError(
+        srcs(
+            ImmutableList.of(
+                SourceFile.fromCode("goog.js", CLOSURE_PRIMITIVES),
+                SourceFile.fromCode(
+                    Compiler.joinPathParts("foo", "bar.js"),
+                    lines(
+                        "/**",
+                        " * @fileoverview",
+                        " * @package",
+                        " */",
+                        "goog.module('Foo');",
+                        "class Foo {}",
+                        "exports = Foo;")),
+                SourceFile.fromCode(
+                    Compiler.joinPathParts("baz", "quux.js"),
+                    "goog.module('client'); const Foo = goog.require('Foo'); new Foo();"))),
+        error(BAD_PACKAGE_PROPERTY_ACCESS));
+  }
+
+  @Test
+  public void testPackageFileOverviewVisibilityAppliesToNameWithoutExplicitVisibility_esModule() {
+    testError(
+        srcs(
+            ImmutableList.of(
+                SourceFile.fromCode(
+                    Compiler.joinPathParts("foo", "bar.js"),
+                    lines(
+                        "/**",
+                        " * @fileoverview",
+                        " * @package",
+                        " */",
+                        "class Foo {}",
+                        "export {Foo};")),
+                SourceFile.fromCode(
+                    Compiler.joinPathParts("baz", "quux.js"),
+                    "import {Foo} from '/foo/bar.js'; new Foo();"))),
+        error(BAD_PACKAGE_PROPERTY_ACCESS));
+  }
+
+  @Test
   public void
       testPackageFileOverviewVisibilityDoesNotApplyToPropertyWithExplicitPublicVisibility() {
     test(
@@ -2022,7 +2330,11 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                     " * @package",
                     " */",
                     "",
+                    "/** @public */", // The class must be visible.
                     "Foo = class {",
+                    "  /** @public */", // The constructor must be visible.
+                    "  constructor() { }",
+                    "",
                     "  /** @public */",
                     "  bar() {}",
                     "};")),
@@ -2033,6 +2345,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                     "foo.bar();"))));
   }
 
+  @Test
   public void
       testPublicFileOverviewVisibilityDoesNotApplyToPropertyWithExplicitPackageVisibility() {
     test(
@@ -2057,6 +2370,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testPublicFileOverviewVisibilityAppliesToPropertyWithoutExplicitVisibility() {
     test(
         srcs(
@@ -2078,6 +2392,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                     "foo.bar();"))));
   }
 
+  @Test
   public void testPackageFileOverviewVisibilityAppliesToPropertyWithoutExplicitVisibility() {
     test(
         srcs(
@@ -2089,7 +2404,11 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                     " * @package",
                     " */",
                     "",
+                    "/** @public */", // The class must be visible.
                     "Foo = class {",
+                    "  /** @public */", // The constructor must be visible.
+                    "  constructor() { }",
+                    "",
                     "  bar() {}",
                     "}")),
             SourceFile.fromCode(
@@ -2100,6 +2419,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testFileOverviewVisibilityComesFromDeclarationFileNotUseFile() {
     test(
         srcs(
@@ -2111,7 +2431,11 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                     " * @package",
                     " */",
                     "",
+                    "/** @public */", // The class must be visible.
                     "Foo = class {",
+                    "  /** @public */", // The constructor must be visible.
+                    "  constructor() { }",
+                    "",
                     "  bar() {}",
                     "}")),
             SourceFile.fromCode(
@@ -2127,6 +2451,97 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PACKAGE_PROPERTY_ACCESS));
   }
 
+  @Test
+  public void testImplicitSubclassConstructor_doesNotInheritVisibility_andIsPublic() {
+    test(
+        srcs(
+            lines(
+                "class Foo {", //
+                "  /** @private */",
+                "  constructor() { }",
+                "}",
+                "",
+                // The implict constructor for `SubFoo` should be treated as public.
+                "class SubFoo extends Foo { }"),
+            // So we get no warning for using it here.
+            lines("new SubFoo();")));
+  }
+
+  @Test
+  public void testImplicitSubclassConstructor_doesNotInheritVisibility_andUsesFileOverview() {
+    test(
+        srcs(
+            SourceFile.fromCode(
+                Compiler.joinPathParts("foo", "bar.js"),
+                lines(
+                    "/**",
+                    " * @fileoverview",
+                    " * @package",
+                    " */",
+                    "",
+                    "class Foo {", //
+                    "  /** @private */",
+                    "  constructor() { }",
+                    "}",
+                    "",
+                    // The implict constructor for `SubFoo` should be trated as package.
+                    "/** @public */", // The class must be visible.
+                    "class SubFoo extends Foo { }")),
+            SourceFile.fromCode(Compiler.joinPathParts("baz", "quux.js"), lines("new SubFoo();"))),
+        error(BAD_PACKAGE_PROPERTY_ACCESS));
+  }
+
+  @Test
+  public void testUnannotatedSubclassConstructor_doesNotInheritVisibility_andIsPublic() {
+    test(
+        srcs(
+            lines(
+                "class Foo {", //
+                "  /** @private */",
+                "  constructor() { }",
+                "}",
+                "",
+                "class SubFoo extends Foo {",
+                // The unannotated constructor for `SubFoo` should be treated as public.
+                "  constructor() {",
+                "    super();",
+                "  }",
+                "}"),
+            // So we get no warning for using it here.
+            lines("new SubFoo();")));
+  }
+
+  @Test
+  public void testUnannotatedSubclassConstructor_doesNotInheritVisibility_andUsesFileOverview() {
+    test(
+        srcs(
+            SourceFile.fromCode(
+                Compiler.joinPathParts("foo", "bar.js"),
+                lines(
+                    "/**",
+                    " * @fileoverview",
+                    " * @package",
+                    " */",
+                    "",
+                    "class Foo {", //
+                    "  /** @private */",
+                    "  constructor() { }",
+                    "}",
+                    "",
+                    "/** @public */", // The class must be visible.
+                    "class SubFoo extends Foo {",
+                    // The unannotated constructor for `SubFoo` should be treated as package.
+                    "  constructor() {",
+                    "    super();",
+                    "  }",
+                    "}")),
+            SourceFile.fromCode(
+                Compiler.joinPathParts("baz", "quux.js"), //
+                lines("new SubFoo();"))),
+        error(BAD_PACKAGE_PROPERTY_ACCESS));
+  }
+
+  @Test
   public void testNoExceptionsWithBadConstructors1() {
     test(
         srcs(
@@ -2143,6 +2558,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testNoExceptionsWithBadConstructors2() {
     test(
         srcs(
@@ -2157,6 +2573,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testGoodOverrideOfProtectedProperty() {
     test(
         srcs(
@@ -2172,6 +2589,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testBadOverrideOfProtectedProperty() {
     test(
         srcs(
@@ -2188,6 +2606,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(VISIBILITY_MISMATCH));
   }
 
+  @Test
   public void testBadOverrideOfPrivateProperty() {
     test(
         srcs(
@@ -2202,24 +2621,9 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "  bar() {}",
                 "}")),
         error(PRIVATE_OVERRIDE));
-
-    test(
-        srcs(
-            lines(
-                "class Foo {", //
-                "  /** @private */",
-                "  bar() {}",
-                "}"),
-            lines(
-                "class SubFoo extends Foo {",
-                "  /**",
-                "   * @override",
-                "   * @suppress{visibility}",
-                "   */",
-                "  bar() {}",
-                "}")));
   }
 
+  @Test
   public void testAccessOfStaticMethodOnPrivateClass() {
     test(
         srcs(
@@ -2232,6 +2636,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_GLOBAL_ACCESS));
   }
 
+  @Test
   public void testAccessOfStaticMethodOnPrivateQualifiedConstructor() {
     test(
         srcs(
@@ -2247,6 +2652,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testInstanceofOfPrivateConstructor() {
     test(
         srcs(
@@ -2261,6 +2667,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
             lines("goog instanceof goog.Foo")));
   }
 
+  @Test
   public void testOkAssignmentOfDeprecatedProperty() {
     test(
         srcs(
@@ -2273,6 +2680,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testBadReadOfDeprecatedProperty() {
     test(
         srcs(
@@ -2288,6 +2696,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         deprecatedProp("Property bar of type Foo has been deprecated: GRR"));
   }
 
+  @Test
   public void testNullableDeprecatedProperty() {
     test(
         srcs(
@@ -2302,6 +2711,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(DEPRECATED_PROP));
   }
 
+  @Test
   public void testNullablePrivateProperty() {
     test(
         srcs(
@@ -2316,6 +2726,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testPrivatePropertyByConvention1() {
     test(
         srcs(
@@ -2330,6 +2741,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testPrivatePropertyByConvention2() {
     test(
         srcs(
@@ -2349,6 +2761,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(BAD_PRIVATE_PROPERTY_ACCESS));
   }
 
+  @Test
   public void testDeclarationAndConventionConflict1() {
     test(
         srcs(
@@ -2360,6 +2773,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONVENTION_MISMATCH));
   }
 
+  @Test
   public void testDeclarationAndConventionConflict2() {
     test(
         srcs(
@@ -2371,6 +2785,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONVENTION_MISMATCH));
   }
 
+  @Test
   public void testDeclarationAndConventionConflict3() {
     test(
         srcs(
@@ -2384,6 +2799,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONVENTION_MISMATCH));
   }
 
+  @Test
   public void testDeclarationAndConventionConflict4a() {
     test(
         srcs(
@@ -2397,6 +2813,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONVENTION_MISMATCH));
   }
 
+  @Test
   public void testDeclarationAndConventionConflict4b() {
     test(
         srcs(
@@ -2412,6 +2829,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONVENTION_MISMATCH));
   }
 
+  @Test
   public void testDeclarationAndConventionConflict5() {
     test(
         srcs(
@@ -2423,6 +2841,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONVENTION_MISMATCH));
   }
 
+  @Test
   public void testDeclarationAndConventionConflict6() {
     test(
         srcs(
@@ -2434,6 +2853,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONVENTION_MISMATCH));
   }
 
+  @Test
   public void testDeclarationAndConventionConflict10() {
     test(
         srcs(
@@ -2445,6 +2865,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONVENTION_MISMATCH));
   }
 
+  @Test
   public void testConstantProperty1a() {
     test(
         srcs(
@@ -2467,6 +2888,34 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
+  public void testConstantPropertyReassigned_crossModuleWithCollidingNames() {
+    // TODO(b/133447431): This code should not cause a warning, but the compiler incorrectly treats
+    // both 'A' instances as the same type.
+    disableRewriteClosureCode();
+    test(
+        srcs(
+            "var goog = {}; goog.module = function(ns) {};",
+            lines(
+                "goog.module('mod1');",
+                "class A {",
+                "  constructor() {",
+                "    /** @const */",
+                "    this.bar = 3;",
+                "  }",
+                "}"),
+            lines(
+                "goog.module('mod2');",
+                "class A {",
+                "  constructor() {",
+                "    /** @const */",
+                "    this.bar = 3;",
+                "  }",
+                "}")),
+        error(CONST_PROPERTY_REASSIGNED_VALUE));
+  }
+
+  @Test
   public void testConstantProperty1b() {
     test(
         srcs(
@@ -2487,6 +2936,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
   public void testConstantProperty2a() {
     test(
         srcs(
@@ -2501,6 +2951,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
   public void testConstantProperty2b() {
     test(
         srcs(
@@ -2514,32 +2965,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
-  public void testConstantProperty3a() {
-    test(
-        srcs(
-            lines(
-                "class Foo {}",
-                "",
-                "/** @type {number} */",
-                "Foo.prototype.PROP = 2;",
-                "",
-                "/** @suppress {duplicate|const} */",
-                "Foo.prototype.PROP = 3;")));
-  }
-
-  public void testConstantProperty3b() {
-    test(
-        srcs(
-            lines(
-                "class Foo {}",
-                "",
-                "/** @const */",
-                "Foo.prototype.prop = 2;",
-                "",
-                "/** @suppress {const} */",
-                "Foo.prototype.prop = 3;")));
-  }
-
+  @Test
   public void testConstantProperty4() {
     test(
         srcs(
@@ -2553,6 +2979,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
   public void testConstantProperty4b() {
     test(
         srcs(
@@ -2564,6 +2991,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
   public void testConstantProperty5() {
     test(
         srcs(
@@ -2581,6 +3009,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
   public void testConstantProperty6() {
     test(
         srcs(
@@ -2596,6 +3025,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
   public void testConstantProperty7() {
     test(
         srcs(
@@ -2615,6 +3045,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testConstantProperty9() {
     test(
         srcs(
@@ -2633,6 +3064,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testConstantProperty10a() {
     test(
         srcs(
@@ -2647,6 +3079,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "Foo.prototype.prop;")));
   }
 
+  @Test
   public void testConstantProperty10b() {
     test(
         srcs(
@@ -2660,6 +3093,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "Foo.prototype.PROP;")));
   }
 
+  @Test
   public void testConstantProperty11() {
     test(
         srcs(
@@ -2678,6 +3112,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
   public void testConstantProperty12() {
     test(
         srcs(
@@ -2700,6 +3135,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "}")));
   }
 
+  @Test
   public void testConstantProperty13() {
     test(
         srcs(
@@ -2723,6 +3159,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
   public void testConstantProperty14() {
     test(
         srcs(
@@ -2738,6 +3175,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_DELETED));
   }
 
+  @Test
   public void testConstantPropertyInExterns() {
     test(
         externs(
@@ -2755,6 +3193,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
   public void testConstantProperty15a() {
     test(
         srcs(
@@ -2773,6 +3212,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
   public void testConstantProperty15b() {
     test(
         srcs(
@@ -2789,6 +3229,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
   public void testConstantProperty15c() {
     test(
         srcs(
@@ -2809,6 +3250,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
         error(CONST_PROPERTY_REASSIGNED_VALUE));
   }
 
+  @Test
   public void testConstantProperty16() {
     test(
         srcs(
@@ -2822,50 +3264,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "Bar.CONST = 100;")));
   }
 
-  public void testSuppressConstantProperty() {
-    test(
-        srcs(
-            lines(
-                "class A {",
-                "  constructor() {",
-                "    /** @const */",
-                "    this.bar = 3;",
-                "  }",
-                "}",
-                "",
-                "/** @suppress {constantProperty} */",
-                "class B {",
-                "  constuctor() {",
-                "    /** @const */",
-                "    this.bar = 3;",
-                "",
-                "    this.bar += 4;",
-                "  }",
-                "}")));
-  }
-
-  public void testSuppressConstantProperty2() {
-    test(
-        srcs(
-            lines(
-                "class A {",
-                "  constructor() {",
-                "    /** @const */",
-                "    this.bar = 3;",
-                "  }",
-                "}",
-                "",
-                "/** @suppress {const} */",
-                "class B {",
-                "  constuctor() {",
-                "    /** @const */",
-                "    this.bar = 3;",
-                "",
-                "    this.bar += 4;",
-                "  }",
-                "}")));
-  }
-
+  @Test
   public void testFinalClassCannotBeSubclassed() {
     test(
         srcs(
@@ -2894,6 +3293,7 @@ public final class CheckAccessControlsEs6ClassTest extends CompilerTestCase {
                 "var Bar = class extends Foo {};")));
   }
 
+  @Test
   public void testCircularPrototypeLink() {
     // NOTE: this does yield a useful warning, except we don't check for it in this test:
     //      WARNING - Cycle detected in inheritance chain of type Foo

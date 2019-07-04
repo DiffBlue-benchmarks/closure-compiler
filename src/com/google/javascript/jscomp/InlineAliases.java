@@ -16,8 +16,7 @@
 
 package com.google.javascript.jscomp;
 
-import com.google.common.base.Predicates;
-import com.google.javascript.jscomp.NodeTraversal.Callback;
+import com.google.javascript.jscomp.NodeTraversal.ExternsSkippingCallback;
 import com.google.javascript.rhino.JSDocInfo;
 import com.google.javascript.rhino.JSDocInfo.Visibility;
 import com.google.javascript.rhino.Node;
@@ -27,16 +26,19 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Inline aliases created by exports of modules before type checking.
+ * Inline constant aliases
  *
- * <p>The old type inference doesn't deal as well with aliased types as with unaliased ones, such as
- * in extends clauses (@extends {alias}) and templated types (alias<T>). This pass inlines these
- * aliases to make type checking's job easier.
+ * <p>This pass was originally necessary because typechecking did not handle type aliases well. Now
+ * typechecking understands type aliases. In theory, this pass can be deleted, but in practice this
+ * pass affects some check passes that run post-typechecking.
  *
  * <p>This alias inliner is not very aggressive. It will only inline explicitly const aliases but
  * not effectively const ones (for example ones that are only ever assigned a value once). This is
- * done to be conservative since it's not a good idea to be making dramatic AST changes before type
- * checking. There is a more aggressive alias inliner that runs at the start of optimization.
+ * done to be conservative since it's not a good idea to be making dramatic AST changes during
+ * checks (or really, any AST changes at all). There is a more aggressive alias inliner that runs at
+ * the start of optimization.
+ *
+ * <p>TODO(b/124915436): Delete this pass.
  *
  * @author blickly@gmail.com (Ben Lickly)
  */
@@ -48,9 +50,11 @@ final class InlineAliases implements CompilerPass {
   private final AbstractCompiler compiler;
   private final Map<String, String> aliases = new LinkedHashMap<>();
   private GlobalNamespace namespace;
+  private final AstFactory astFactory;
 
   InlineAliases(AbstractCompiler compiler) {
     this.compiler = compiler;
+    this.astFactory = compiler.createAstFactory();
   }
 
   @Override
@@ -58,13 +62,6 @@ final class InlineAliases implements CompilerPass {
     namespace = new GlobalNamespace(compiler, externs, root);
     NodeTraversal.traverseRoots(compiler, new AliasesCollector(), externs, root);
     NodeTraversal.traverseRoots(compiler, new AliasesInliner(), externs, root);
-  }
-
-  private abstract static class ExternsSkippingCallback implements Callback {
-    @Override
-    public final boolean shouldTraverse(NodeTraversal t, Node n, Node parent) {
-      return !n.isScript() || !n.isFromExterns() || NodeUtil.isFromTypeSummary(n);
-    }
   }
 
   private class AliasesCollector extends ExternsSkippingCallback {
@@ -101,9 +98,9 @@ final class InlineAliases implements CompilerPass {
           GlobalNamespace.Name lhsName = namespace.getOwnSlot(lhs.getQualifiedName());
           GlobalNamespace.Name rhsName = namespace.getOwnSlot(rhs.getQualifiedName());
           if (lhsName != null
-              && lhsName.isInlinableGlobalAlias()
+              && lhsName.calculateInlinability().shouldInlineUsages()
               && rhsName != null
-              && rhsName.isInlinableGlobalAlias()
+              && rhsName.calculateInlinability().shouldInlineUsages()
               && !isPrivate(rhsName.getDeclaration().getNode())) {
             aliases.put(lhs.getQualifiedName(), rhs.getQualifiedName());
           }
@@ -146,11 +143,17 @@ final class InlineAliases implements CompilerPass {
               return;
             }
 
-            Node newNode = NodeUtil.newQName(compiler, resolveAlias(n.getQualifiedName(), n));
+            Node newNode =
+                astFactory.createQName(t.getScope(), resolveAlias(n.getQualifiedName(), n));
 
             // If n is get_prop like "obj.foo" then newNode should use only location of foo, not
             // obj.foo.
             newNode.useSourceInfoFromForTree(n.isGetProp() ? n.getLastChild() : n);
+            // Similarly if n is get_prop like "obj.foo" we should index only foo. obj should not
+            // be indexed as it's invisible to users.
+            if (newNode.isGetProp()) {
+              newNode.getFirstChild().makeNonIndexableRecursive();
+            }
             parent.replaceChild(n, newNode);
             t.reportCodeChange();
           }
@@ -158,7 +161,6 @@ final class InlineAliases implements CompilerPass {
         default:
           break;
       }
-      maybeRewriteJsdoc(n.getJSDocInfo());
     }
 
     /**
@@ -181,38 +183,5 @@ final class InlineAliases implements CompilerPass {
       }
       return name;
     }
-
-    private void maybeRewriteJsdoc(JSDocInfo info) {
-      if (info == null) {
-        return;
-      }
-      for (Node typeNode : info.getTypeNodes()) {
-        NodeUtil.visitPreOrder(typeNode, fixJsdocTypeNodes, Predicates.alwaysTrue());
-      }
-    }
-
-    private final NodeUtil.Visitor fixJsdocTypeNodes =
-        new NodeUtil.Visitor() {
-          @Override
-          public void visit(Node aliasReference) {
-            if (!aliasReference.isString()) {
-              return;
-            }
-            String fullTypeName = aliasReference.getString();
-            int dotIndex = 0;
-            do {
-              dotIndex = fullTypeName.indexOf('.', dotIndex + 1);
-              String aliasName =
-                  dotIndex == -1 ? fullTypeName : fullTypeName.substring(0, dotIndex);
-              if (aliases.containsKey(aliasName)) {
-                String replacement =
-                    resolveAlias(aliasName, aliasReference)
-                        + fullTypeName.substring(aliasName.length());
-                aliasReference.setString(replacement);
-                return;
-              }
-            } while (dotIndex != -1);
-          }
-        };
   }
 }

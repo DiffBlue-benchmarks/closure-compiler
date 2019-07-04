@@ -44,7 +44,7 @@ public enum CompilationParam {
     @Override
     public void apply(CompilerOptions options, boolean value) {
       if (value) {
-        for (DiagnosticGroup group : new DiagnosticGroups().getRegisteredGroups().values()) {
+        for (DiagnosticGroup group : DiagnosticGroups.getRegisteredGroups().values()) {
           options.setWarningLevel(group, CheckLevel.WARNING);
         }
       }
@@ -57,10 +57,10 @@ public enum CompilationParam {
   },
 
   /** If true, the output language is ES5. If false, we skip transpilation. */
-  TRANSPILE(true, ParamGroup.TRANSPILATION) {
+  TRANSPILE(ParamGroup.TRANSPILATION) {
     @Override
     public void apply(CompilerOptions options, boolean value) {
-      options.setLanguageIn(CompilerOptions.LanguageMode.ECMASCRIPT_2017);
+      options.setLanguageIn(CompilerOptions.LanguageMode.STABLE);
       options.setLanguageOut(
           value
               ? CompilerOptions.LanguageMode.ECMASCRIPT5
@@ -453,18 +453,6 @@ public enum CompilationParam {
     }
   },
 
-  MARK_NO_SIDE_EFFECT_CALLS(ParamGroup.OPTIMIZATION){
-    @Override
-    public void apply(CompilerOptions options, boolean value) {
-      options.setMarkNoSideEffectCalls(value);
-    }
-
-    @Override
-    public boolean isApplied(CompilerOptions options) {
-      return options.markNoSideEffectCalls;
-    }
-  },
-
   /** Converts quoted property accesses to dot syntax (a['b'] -> a.b) */
   CONVERT_TO_DOTTED_PROPERTIES(ParamGroup.OPTIMIZATION){
     @Override
@@ -483,10 +471,10 @@ public enum CompilationParam {
     }
   },
 
-  CROSS_MODULE_CODE_MOTION(ParamGroup.OPTIMIZATION) {
+  CROSS_CHUNK_CODE_MOTION(ParamGroup.OPTIMIZATION) {
     @Override
     public void apply(CompilerOptions options, boolean value) {
-      options.setCrossModuleCodeMotion(value);
+      options.setCrossChunkCodeMotion(value);
     }
 
     @Override
@@ -495,10 +483,10 @@ public enum CompilationParam {
     }
   },
 
-  CROSS_MODULE_METHOD_MOTION(ParamGroup.OPTIMIZATION) {
+  CROSS_CHUNK_METHOD_MOTION(ParamGroup.OPTIMIZATION) {
     @Override
     public void apply(CompilerOptions options, boolean value) {
-      options.setCrossModuleMethodMotion(value);
+      options.setCrossChunkMethodMotion(value);
     }
 
     @Override
@@ -519,15 +507,15 @@ public enum CompilationParam {
     }
   },
 
-  DEVIRTUALIZE_PROTOTYPE_METHODS(ParamGroup.OPTIMIZATION) {
+  DEVIRTUALIZE_METHODS(ParamGroup.OPTIMIZATION) {
     @Override
     public void apply(CompilerOptions options, boolean value) {
-      options.setDevirtualizePrototypeMethods(value);
+      options.setDevirtualizeMethods(value);
     }
 
     @Override
     public boolean isApplied(CompilerOptions options) {
-      return options.devirtualizePrototypeMethods;
+      return options.devirtualizeMethods;
     }
   },
 
@@ -649,6 +637,18 @@ public enum CompilationParam {
     }
   },
 
+  OPTIMIZE_ARGUMENTS_ARRAY(ParamGroup.OPTIMIZATION) {
+    @Override
+    public void apply(CompilerOptions options, boolean value) {
+      options.setOptimizeArgumentsArray(value);
+    }
+
+    @Override
+    public boolean isApplied(CompilerOptions options) {
+      return options.optimizeArgumentsArray;
+    }
+  },
+
   /** Removes abstract methods */
   REMOVE_ABSTRACT_METHODS(ParamGroup.OPTIMIZATION) {
     @Override
@@ -728,18 +728,6 @@ public enum CompilationParam {
     @Override
     public boolean isApplied(CompilerOptions options) {
       return options.removeUnusedVars;
-    }
-  },
-
-  REMOVE_SUPER_METHODS(ParamGroup.OPTIMIZATION){
-    @Override
-    public void apply(CompilerOptions options, boolean value) {
-      options.setRemoveSuperMethods(value);
-    }
-
-    @Override
-    public boolean isApplied(CompilerOptions options) {
-      return options.getRemoveSuperMethods();
     }
   },
 

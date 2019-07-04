@@ -16,6 +16,7 @@
 
 package com.google.javascript.jscomp;
 
+import static com.google.common.truth.Truth.assertThat;
 import static com.google.javascript.jscomp.TypeValidator.TYPE_MISMATCH_WARNING;
 import static com.google.javascript.rhino.jstype.JSTypeNative.BOOLEAN_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.NUMBER_TYPE;
@@ -26,17 +27,22 @@ import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.jstype.JSType;
 import com.google.javascript.rhino.jstype.JSTypeNative;
 import com.google.javascript.rhino.jstype.JSTypeRegistry;
-import java.util.Collections;
 import java.util.List;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /**
  * Type-checking tests that can use methods from CompilerTestCase
  *
  * @author nicksantos@google.com (Nick Santos)
  */
+@RunWith(JUnit4.class)
 public final class TypeValidatorTest extends CompilerTestCase {
   @Override
-  protected void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     super.setUp();
     enableTypeCheck();
   }
@@ -51,17 +57,14 @@ public final class TypeValidatorTest extends CompilerTestCase {
     };
   }
 
-  @Override
-  protected int getNumRepetitions() {
-    return 1;
-  }
-
-  public void testBasicMismatch() throws Exception {
+  @Test
+  public void testBasicMismatch() {
     testWarning("/** @param {number} x */ function f(x) {} f('a');", TYPE_MISMATCH_WARNING);
     assertMismatches(ImmutableList.of(fromNatives(STRING_TYPE, NUMBER_TYPE)));
   }
 
-  public void testFunctionMismatch() throws Exception {
+  @Test
+  public void testFunctionMismatch() {
     testWarning(
         "/** \n"
             + " * @param {function(string): number} x \n"
@@ -83,7 +86,8 @@ public final class TypeValidatorTest extends CompilerTestCase {
             fromNatives(NUMBER_TYPE, STRING_TYPE)));
   }
 
-  public void testFunctionMismatch2() throws Exception {
+  @Test
+  public void testFunctionMismatch2() {
     testWarning(
         "/** \n"
             + " * @param {function(string): number} x \n"
@@ -104,7 +108,8 @@ public final class TypeValidatorTest extends CompilerTestCase {
             fromNatives(STRING_TYPE, BOOLEAN_TYPE)));
   }
 
-  public void testFunctionMismatchMediumLengthTypes() throws Exception {
+  @Test
+  public void testFunctionMismatchMediumLengthTypes() {
     test(
         externs(""),
         srcs(
@@ -138,10 +143,11 @@ public final class TypeValidatorTest extends CompilerTestCase {
   }
 
   /**
-   * Make sure the 'found' and 'required' strings are not identical when there is a mismatch.
-   * See https://code.google.com/p/closure-compiler/issues/detail?id=719.
+   * Make sure the 'found' and 'required' strings are not identical when there is a mismatch. See
+   * https://code.google.com/p/closure-compiler/issues/detail?id=719.
    */
-  public void testFunctionMismatchLongTypes() throws Exception {
+  @Test
+  public void testFunctionMismatchLongTypes() {
     test(
         externs(""),
         srcs(
@@ -165,10 +171,9 @@ public final class TypeValidatorTest extends CompilerTestCase {
                     "mismatch: [k]")));
   }
 
-  /**
-   * Same as testFunctionMismatchLongTypes, but with one of the types being a typedef.
-   */
-  public void testFunctionMismatchTypedef() throws Exception {
+  /** Same as testFunctionMismatchLongTypes, but with one of the types being a typedef. */
+  @Test
+  public void testFunctionMismatchTypedef() {
     test(
         externs(""),
         srcs(lines(
@@ -195,14 +200,16 @@ public final class TypeValidatorTest extends CompilerTestCase {
                     "mismatch: [k]")));
   }
 
+  @Test
   public void testNullUndefined() {
     testWarning(
         "/** @param {string} x */ function f(x) {}\n"
             + "f(/** @type {string|null|undefined} */ ('a'));",
         TYPE_MISMATCH_WARNING);
-    assertMismatches(Collections.<TypeMismatch>emptyList());
+    assertMismatches(ImmutableList.of());
   }
 
+  @Test
   public void testSubclass() {
     testWarning(
         "/** @constructor */\n"
@@ -215,9 +222,10 @@ public final class TypeValidatorTest extends CompilerTestCase {
             + "/** @param {Sub} x */ function f(x) {}\n"
             + "f(/** @type {Super} */ (new Sub));",
         TYPE_MISMATCH_WARNING);
-    assertMismatches(Collections.<TypeMismatch>emptyList());
+    assertMismatches(ImmutableList.of());
   }
 
+  @Test
   public void testModuloNullUndef1() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -228,6 +236,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "}"))));
   }
 
+  @Test
   public void testModuloNullUndef2() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -238,6 +247,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "}"))));
   }
 
+  @Test
   public void testModuloNullUndef3() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -250,6 +260,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "}"))));
   }
 
+  @Test
   public void testModuloNullUndef4() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -264,6 +275,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "}"))));
   }
 
+  @Test
   public void testModuloNullUndef5() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -274,6 +286,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "}"))));
   }
 
+  @Test
   public void testModuloNullUndef6() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -284,6 +297,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "}"))));
   }
 
+  @Test
   public void testModuloNullUndef7() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -296,6 +310,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "}"))));
   }
 
+  @Test
   public void testModuloNullUndef8() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -311,6 +326,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "}"))));
   }
 
+  @Test
   public void testModuloNullUndef9() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -326,6 +342,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "Bar.prototype.prop;"))));
   }
 
+  @Test
   public void testModuloNullUndef10() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -340,6 +357,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "}"))));
   }
 
+  @Test
   public void testModuloNullUndef11() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -349,6 +367,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "f(/** @type {?number} */ (null));"))));
   }
 
+  @Test
   public void testModuloNullUndef12() {
     // Only warn for the file not ending in .java.js
     testWarning(ImmutableList.of(
@@ -367,6 +386,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
         TypeValidator.TYPE_MISMATCH_WARNING);
   }
 
+  @Test
   public void testModuloNullUndef13() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -374,6 +394,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
             "var /** @type {{ a:number }} */ x = null;")));
   }
 
+  @Test
   public void testInheritanceModuloNullUndef1() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -392,6 +413,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "Bar.prototype.toString = function() { return null; };"))));
   }
 
+  @Test
   public void testInheritanceModuloNullUndef2() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -410,6 +432,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "Bar.prototype.toString = function() {};"))));
   }
 
+  @Test
   public void testInheritanceModuloNullUndef3() {
     testSame(ImmutableList.of(
         SourceFile.fromCode(
@@ -431,6 +454,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
                 "function Low() {}"))));
   }
 
+  @Test
   public void testDuplicateSuppression() {
     testWarning(
         lines(
@@ -490,6 +514,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
             "ns1.x = 3;"));
   }
 
+  @Test
   public void testDuplicateSuppression_class() {
     enableTranspile();
     testWarning(
@@ -504,6 +529,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
             "function X() {}"));
   }
 
+  @Test
   public void testDuplicateSuppression_typeMismatch() {
     // duplicate diagnostic category includes type mismatches.
     testSame(
@@ -524,6 +550,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
             "ns1.x = 3;"));
   }
 
+  @Test
   public void testDuplicateSuppression_stubs() {
     // No duplicate warning because the first declaration is a stub declaration (property access)
     testSame(
@@ -547,6 +574,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
         TypeValidator.DUP_VAR_DECLARATION_TYPE_MISMATCH);
   }
 
+  @Test
   public void testDuplicateSuppression_topLevelVariables() {
     testWarning(
         lines("/** @type {number} */", "var w;", "/** @type {number} */", "var w;"),
@@ -574,6 +602,7 @@ public final class TypeValidatorTest extends CompilerTestCase {
             "var z;"));
   }
 
+  @Test
   public void testDuplicateSuppression_topLevelFunctions() {
     testWarning(
         lines(
@@ -614,6 +643,6 @@ public final class TypeValidatorTest extends CompilerTestCase {
 
   private void assertMismatches(List<TypeMismatch> expected) {
     List<TypeMismatch> actual = ImmutableList.copyOf(getLastCompiler().getTypeMismatches());
-    assertEquals(expected, actual);
+    assertThat(actual).isEqualTo(expected);
   }
 }

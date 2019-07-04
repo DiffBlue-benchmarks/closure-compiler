@@ -795,6 +795,21 @@ public final class JSDocInfoBuilder {
   }
 
   /**
+   * Records an identifier for a Closure Primitive. function.
+   *
+   * @return {@code true} If the id was successfully updated.
+   */
+  public boolean recordClosurePrimitiveId(String closurePrimitiveId) {
+    if (closurePrimitiveId != null && currentInfo.getClosurePrimitiveId() == null) {
+      currentInfo.setClosurePrimitiveId(closurePrimitiveId);
+      populated = true;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
    * Records a fileoverview description.
    *
    * @return {@code true} if the description was recorded and {@code false}
@@ -1205,10 +1220,8 @@ public final class JSDocInfoBuilder {
     }
   }
 
-  /**
-   * Records that we're lending to another name.
-   */
-  public boolean recordLends(String name) {
+  /** Records that we're lending to another name. */
+  public boolean recordLends(JSTypeExpression name) {
     if (!hasAnyTypeRelatedTags()) {
       currentInfo.setLendsName(name);
       populated = true;
@@ -1376,7 +1389,7 @@ public final class JSDocInfoBuilder {
         || currentInfo.hasReturnType()
         || currentInfo.hasBaseType()
         || currentInfo.getExtendedInterfacesCount() > 0
-        || currentInfo.getLendsName() != null
+        || currentInfo.hasLendsName()
         || currentInfo.hasThisType()
         || hasAnySingletonTypeTags();
   }

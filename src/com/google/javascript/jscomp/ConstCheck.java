@@ -70,7 +70,7 @@ class ConstCheck extends AbstractPostOrderCallback
               initializedConstants.add(var);
             } else if (n.hasChildren()) {
               if (!initializedConstants.add(var)) {
-                reportError(t, n, var, name);
+                reportError(n, var, name);
               }
             }
           }
@@ -96,7 +96,10 @@ class ConstCheck extends AbstractPostOrderCallback
             String name = lhs.getString();
             Var var = t.getScope().getVar(name);
             if (var.isConst() || (isConstant(var) && !initializedConstants.add(var))) {
-              reportError(t, n, var, name);
+              reportError(n, var, name);
+            } else if (var.isGoogModuleExports() && !initializedConstants.add(var)) {
+              compiler.report(
+                  JSError.make(n, CONST_REASSIGNED_VALUE_ERROR, "exports", n.getSourceFileName()));
             }
           }
           break;
@@ -110,7 +113,7 @@ class ConstCheck extends AbstractPostOrderCallback
             String name = lhs.getString();
             Var var = t.getScope().getVar(name);
             if (var.isConst() || isConstant(var)) {
-              reportError(t, n, var, name);
+              reportError(n, var, name);
             }
           }
           break;
@@ -125,18 +128,16 @@ class ConstCheck extends AbstractPostOrderCallback
    * the point where it is declared.
    */
   private static boolean isConstant(Var var) {
-    return var != null && var.isInferredConst();
+    return var != null && var.isDeclaredOrInferredConst();
   }
 
-  /**
-   * Reports a reassigned constant error.
-   */
-  void reportError(NodeTraversal t, Node n, Var var, String name) {
+  /** Reports a reassigned constant error. */
+  void reportError(Node n, Var var, String name) {
     JSDocInfo info = NodeUtil.getBestJSDocInfo(n);
     if (info == null || !info.getSuppressions().contains("const")) {
       Node declNode = var.getNode();
       String declaredPosition = declNode.getSourceFileName() + ":" + declNode.getLineno();
-      compiler.report(t.makeError(n, CONST_REASSIGNED_VALUE_ERROR, name, declaredPosition));
+      compiler.report(JSError.make(n, CONST_REASSIGNED_VALUE_ERROR, name, declaredPosition));
     }
   }
 }

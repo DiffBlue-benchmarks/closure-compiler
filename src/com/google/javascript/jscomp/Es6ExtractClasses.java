@@ -63,12 +63,13 @@ public final class Es6ExtractClasses
   Es6ExtractClasses(AbstractCompiler compiler) {
     this.compiler = compiler;
     Set<String> consts = new HashSet<>();
-    this.expressionDecomposer = new ExpressionDecomposer(
-        compiler,
-        compiler.getUniqueNameIdSupplier(),
-        consts,
-        Scope.createGlobalScope(new Node(Token.SCRIPT)),
-        compiler.getOptions().allowMethodCallDecomposing());
+    this.expressionDecomposer =
+        new ExpressionDecomposer(
+            compiler,
+            compiler.getUniqueNameIdSupplier(),
+            consts,
+            Scope.createGlobalScope(new Node(Token.SCRIPT)),
+            /* allowMethodCallDecomposing = */ true);
   }
 
   @Override
@@ -87,8 +88,8 @@ public final class Es6ExtractClasses
 
   @Override
   public void visit(NodeTraversal t, Node n, Node parent) {
-    if (n.isClass() && shouldExtractClass(n, parent)) {
-      extractClass(t, n, parent);
+    if (n.isClass() && shouldExtractClass(n)) {
+      extractClass(t, n);
     }
   }
 
@@ -154,7 +155,8 @@ public final class Es6ExtractClasses
     }
   }
 
-  private boolean shouldExtractClass(Node classNode, Node parent) {
+  private boolean shouldExtractClass(Node classNode) {
+    Node parent = classNode.getParent();
     boolean isAnonymous = classNode.getFirstChild().isEmpty();
     if (NodeUtil.isClassDeclaration(classNode)
         || (isAnonymous && parent.isName())
@@ -166,12 +168,7 @@ public final class Es6ExtractClasses
       return false;
     }
 
-    if (NodeUtil.mayHaveSideEffects(classNode)
-        // Don't extract the class if it's not safe to do so. For example,
-        // var c = maybeTrue() && class extends someSideEffect() {};
-        // TODO(brndn): it is possible to be less conservative. If the classNode is DECOMPOSABLE,
-        // we could use the expression decomposer to move it out of the way.
-        || expressionDecomposer.canExposeExpression(classNode) != DecompositionType.MOVABLE) {
+    if (expressionDecomposer.canExposeExpression(classNode) == DecompositionType.UNDECOMPOSABLE) {
       compiler.report(
           JSError.make(classNode, CANNOT_CONVERT, "class expression that cannot be extracted"));
       return false;
@@ -180,7 +177,12 @@ public final class Es6ExtractClasses
     return true;
   }
 
-  private void extractClass(NodeTraversal t, Node classNode, Node parent) {
+  private void extractClass(NodeTraversal t, Node classNode) {
+    if (expressionDecomposer.canExposeExpression(classNode) == DecompositionType.DECOMPOSABLE) {
+      expressionDecomposer.exposeExpression(classNode);
+    }
+    Node parent = classNode.getParent();
+
     String name = ModuleNames.fileToJsIdentifier(classNode.getStaticSourceFile().getName())
         + CLASS_DECL_VAR
         + (classDeclVarCounter++);
@@ -189,13 +191,64 @@ public final class Es6ExtractClasses
     Node statement = NodeUtil.getEnclosingStatement(parent);
     JSType classType = classNode.getJSType();
     checkState(!compiler.hasTypeCheckingRun() || classType != null);
-    Node className = IR.name(name).setJSType(classType);
-    parent.replaceChild(classNode, className.cloneTree());
+    // class name node used as LHS in newly created assignment
+    Node classNameLhs = IR.name(name).setJSType(classType);
+    // class name node that replaces the class literal in the original statement
+    Node classNameRhs = classNameLhs.cloneTree();
+    parent.replaceChild(classNode, classNameRhs);
     Node classDeclaration =
-        IR.constNode(className, classNode).useSourceInfoIfMissingFromForTree(classNode);
-    NodeUtil.addFeatureToScript(t.getCurrentFile(), Feature.CONST_DECLARATIONS);
+        IR.constNode(classNameLhs, classNode).useSourceInfoIfMissingFromForTree(classNode);
+    NodeUtil.addFeatureToScript(t.getCurrentScript(), Feature.CONST_DECLARATIONS);
     classDeclaration.setJSDocInfo(JSDocInfoBuilder.maybeCopyFrom(info).build());
     statement.getParent().addChildBefore(classDeclaration, statement);
+
+    // If the original statement was a variable declaration or qualified name assignment like
+    // like these:
+    // var ClassName = class {...
+    // OR
+    // some.qname.ClassName = class {...
+    //
+    // We will have changed the original statement to
+    //
+    // var ClassName = generatedName;
+    // OR
+    // some.qname.ClassName = generatedName;
+    //
+    // This is creating a type alias for a class, but since there's no literal class on the RHS,
+    // it doesn't look like one. Add at-constructor JSDoc to make it clear that this is happening.
+    //
+    // This was added to fix a specific problem where the original definition was for an abstract
+    // class, so its JSDoc included at-abstract.
+    // This caused ClosureCodeRemoval to think this rewritten assignment was a removable abstract
+    // method definition instead of the definition of an abstract class.
+    //
+    // TODO(b/117292942): Make ClosureCodeRemoval smarter so this hack isn't necessary to
+    // prevent incorrect removal of assignments.
+    if (NodeUtil.isNameDeclaration(statement)
+        && statement.hasOneChild()
+        && statement.getOnlyChild() == parent) {
+      // var ClassName = generatedName;
+      addAtConstructor(statement);
+    } else if (statement.isExprResult()) {
+      Node expr = statement.getOnlyChild();
+      if (expr.isAssign()
+          && expr.getFirstChild().isQualifiedName()
+          && expr.getSecondChild() == classNameRhs) {
+        // some.qname.ClassName = generatedName;
+        addAtConstructor(expr);
+      }
+    }
     compiler.reportChangeToEnclosingScope(classDeclaration);
+  }
+
+  /**
+   * Add at-constructor to the JSDoc of the given node.
+   *
+   * @param node
+   */
+  private void addAtConstructor(Node node) {
+    JSDocInfoBuilder builder = JSDocInfoBuilder.maybeCopyFrom(node.getJSDocInfo());
+    builder.recordConstructor();
+    node.setJSDocInfo(builder.build());
   }
 }

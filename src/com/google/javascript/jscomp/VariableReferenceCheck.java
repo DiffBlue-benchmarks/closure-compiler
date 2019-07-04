@@ -79,8 +79,10 @@ class VariableReferenceCheck implements HotSwapCompilerPass {
 
   // These types do not permit a block-scoped declaration inside them without an explicit block.
   // e.g. if (b) let x;
+  // This list omits Token.LABEL intentionally. It's handled differently in IRFactory.
   private static final ImmutableSet<Token> BLOCKLESS_DECLARATION_FORBIDDEN_STATEMENTS =
-      Sets.immutableEnumSet(Token.IF, Token.FOR, Token.FOR_IN, Token.FOR_OF, Token.WHILE);
+      Sets.immutableEnumSet(
+          Token.IF, Token.FOR, Token.FOR_IN, Token.FOR_OF, Token.FOR_AWAIT_OF, Token.WHILE);
 
   public VariableReferenceCheck(AbstractCompiler compiler) {
     this(compiler, false);
@@ -462,11 +464,11 @@ class VariableReferenceCheck implements HotSwapCompilerPass {
         Node rhs = lhs.getFirstChild();
         if (rhs != null
             && (NodeUtil.isCallTo(rhs, "goog.forwardDeclare")
+                || NodeUtil.isCallTo(rhs, "goog.requireType")
                 || NodeUtil.isCallTo(rhs, "goog.require")
                 || rhs.isQualifiedName())) {
-          // No warning. goog.{require,forwardDeclare} and import will be caught by the
-          // unused-require check, and if the right side is a qualified name then this is
-          // likely an alias used in type annotations.
+          // No warning. module imports will be caught by the unused-require check, and if the
+          // right side is a qualified name then this is likely an alias used in type annotations.
           return;
         }
       }

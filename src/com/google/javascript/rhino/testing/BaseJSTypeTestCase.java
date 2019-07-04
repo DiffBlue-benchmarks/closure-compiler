@@ -48,7 +48,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.javascript.rhino.JSTypeExpression;
 import com.google.javascript.rhino.Node;
-import com.google.javascript.rhino.jstype.FunctionBuilder;
 import com.google.javascript.rhino.jstype.FunctionType;
 import com.google.javascript.rhino.jstype.JSType;
 import com.google.javascript.rhino.jstype.JSTypeNative;
@@ -56,9 +55,10 @@ import com.google.javascript.rhino.jstype.JSTypeRegistry;
 import com.google.javascript.rhino.jstype.ObjectType;
 import com.google.javascript.rhino.jstype.RecordTypeBuilder;
 import com.google.javascript.rhino.jstype.TemplatizedType;
-import junit.framework.TestCase;
+import org.junit.Before;
 
-public abstract class BaseJSTypeTestCase extends TestCase {
+/** A base class for tests on {@code JSType}s. */
+public abstract class BaseJSTypeTestCase {
   protected static final String FORWARD_DECLARED_TYPE_NAME = "forwardDeclared";
 
   protected static final Joiner LINE_JOINER = Joiner.on('\n');
@@ -79,7 +79,6 @@ public abstract class BaseJSTypeTestCase extends TestCase {
   protected JSType DATE_FUNCTION_TYPE;
   protected ObjectType DATE_TYPE;
   protected FunctionType FUNCTION_FUNCTION_TYPE;
-  protected FunctionType FUNCTION_INSTANCE_TYPE;
   protected ObjectType FUNCTION_PROTOTYPE;
   protected JSType GREATEST_FUNCTION_TYPE;
   protected JSType LEAST_FUNCTION_TYPE;
@@ -109,9 +108,8 @@ public abstract class BaseJSTypeTestCase extends TestCase {
 
   protected int NATIVE_PROPERTIES_COUNT;
 
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
+  @Before
+  public void setUp() throws Exception {
     errorReporter = new TestErrorReporter(null, null);
     registry = new JSTypeRegistry(errorReporter, ImmutableSet.of(FORWARD_DECLARED_TYPE_NAME));
     initTypes();
@@ -132,7 +130,6 @@ public abstract class BaseJSTypeTestCase extends TestCase {
     DATE_FUNCTION_TYPE = registry.getNativeType(JSTypeNative.DATE_FUNCTION_TYPE);
     DATE_TYPE = registry.getNativeObjectType(JSTypeNative.DATE_TYPE);
     FUNCTION_FUNCTION_TYPE = registry.getNativeFunctionType(JSTypeNative.FUNCTION_FUNCTION_TYPE);
-    FUNCTION_INSTANCE_TYPE = registry.getNativeFunctionType(JSTypeNative.FUNCTION_INSTANCE_TYPE);
     FUNCTION_PROTOTYPE = registry.getNativeObjectType(JSTypeNative.FUNCTION_PROTOTYPE);
     GREATEST_FUNCTION_TYPE = registry.getNativeType(JSTypeNative.GREATEST_FUNCTION_TYPE);
     LEAST_FUNCTION_TYPE = registry.getNativeType(JSTypeNative.LEAST_FUNCTION_TYPE);
@@ -326,9 +323,8 @@ public abstract class BaseJSTypeTestCase extends TestCase {
   private static void addMethod(
       JSTypeRegistry registry, ObjectType receivingType, String methodName,
       JSType returnType) {
-    receivingType.defineDeclaredProperty(methodName,
-        new FunctionBuilder(registry).withReturnType(returnType).build(),
-        null);
+    receivingType.defineDeclaredProperty(
+        methodName, FunctionType.builder(registry).withReturnType(returnType).build(), null);
   }
 
   protected JSType createUnionType(JSType... variants) {

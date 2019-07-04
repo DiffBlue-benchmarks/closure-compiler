@@ -24,11 +24,16 @@ import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.CompilerPass;
 import com.google.javascript.jscomp.CompilerTestCase;
 import com.google.javascript.jscomp.DiagnosticGroups;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /**
  * Test case for {@link CheckNullableReturn}.
  *
  */
+@RunWith(JUnit4.class)
 public final class CheckNullableReturnTest extends CompilerTestCase {
   private static final String EXTERNS =
       DEFAULT_EXTERNS + "/** @constructor */ function SomeType() {}";
@@ -39,24 +44,21 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
   }
 
   @Override
-  protected CompilerOptions getOptions(CompilerOptions options) {
-    super.getOptions(options);
+  protected CompilerOptions getOptions() {
+    CompilerOptions options = super.getOptions();
     options.setWarningLevel(DiagnosticGroups.ANALYZER_CHECKS, CheckLevel.WARNING);
     return options;
   }
 
   @Override
-  protected int getNumRepetitions() {
-    return 1;
-  }
-
-  @Override
+  @Before
   public void setUp() throws Exception {
     super.setUp();
     enableTypeCheck();
     enableTranspile();
   }
 
+  @Test
   public void testSimpleWarning() {
     testError(lines(
         "/** @return {SomeType} */",
@@ -65,6 +67,7 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
         "}"));
   }
 
+  @Test
   public void testNullableReturn() {
     testBodyOk("return null;");
     testBodyOk("if (a) { return null; } return {};");
@@ -73,7 +76,8 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
         "/** @return {number} */ function f() { return 42; }; return null;");
   }
 
-  public void testNotNullableReturn()  {
+  @Test
+  public void testNotNullableReturn() {
     // Empty function body. Ignore this case. The remainder of the functions in
     // this test have non-empty bodies.
     testBodyOk("");
@@ -92,6 +96,7 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
     testBodyError("switch(g) { case 1: return {}; default: return {}; } return null;");
   }
 
+  @Test
   public void testFinallyStatements() {
     testBodyOk("try { return null; } finally { return {}; }");
     testBodyOk("try { } finally { return null; }");
@@ -100,6 +105,7 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
     testBodyError("try { } catch (e) { return null; } finally { return {}; }");
   }
 
+  @Test
   public void testKnownConditions() {
     testBodyOk("if (true) return {}; return null;");
     testBodyOk("if (true) return null; else return {};");
@@ -116,6 +122,7 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
     testBodyOk("if (3) return null; else return {};");
   }
 
+  @Test
   public void testKnownWhileLoop() {
     testBodyError("while (1) return {}");
     testBodyError("while (1) { if (x) { return {}; } else { return {}; }}");
@@ -125,6 +132,7 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
     testBodyError("while(x) { return {}; }");
   }
 
+  @Test
   public void testTwoBranches() {
     testError(lines(
         "/** @return {SomeType} */",
@@ -148,6 +156,7 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
         "}"));
   }
 
+  @Test
   public void testTryCatch() {
     testError(lines(
         "/** @return {SomeType} */",
@@ -185,6 +194,7 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
         "} finally { return baz(); }"));
   }
 
+  @Test
   public void testNoExplicitReturn() {
     testError(lines(
         "/** @return {SomeType} */",
@@ -195,6 +205,7 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
         "}"));
   }
 
+  @Test
   public void testNoWarningIfCanReturnNull() {
     testOk(lines(
         "/** @return {SomeType} */",
@@ -207,6 +218,7 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
         "}"));
   }
 
+  @Test
   public void testNoWarningOnEmptyFunction() {
     testOk(lines(
         "/** @return {SomeType} */",
@@ -218,6 +230,7 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
         "}"));
   }
 
+  @Test
   public void testNoWarningOnXOrNull() {
     testOk(lines(
         "/**",
@@ -239,6 +252,7 @@ public final class CheckNullableReturnTest extends CompilerTestCase {
         "}"));
   }
 
+  @Test
   public void testNonfunctionTypeDoesntCrash() {
     enableClosurePass();
     testNoWarning(

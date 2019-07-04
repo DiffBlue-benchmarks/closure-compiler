@@ -16,6 +16,7 @@
 
 package com.google.javascript.jscomp;
 
+import static com.google.common.truth.Truth.assertThat;
 import static com.google.javascript.rhino.testing.BaseJSTypeTestCase.ALL_NATIVE_EXTERN_TYPES;
 
 import com.google.common.collect.ImmutableList;
@@ -23,15 +24,21 @@ import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.jstype.FunctionType;
 import com.google.javascript.rhino.jstype.ObjectType;
 import java.util.List;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /**
  * Unit tests for {@link FunctionTypeBuilder}.
  *
  */
+@RunWith(JUnit4.class)
 public final class FunctionTypeBuilderTest extends CompilerTestCase {
 
   @Override
-  protected void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     super.setUp();
     enableParseTypeInfo();
     enableTypeCheck();
@@ -46,16 +53,13 @@ public final class FunctionTypeBuilderTest extends CompilerTestCase {
         };
   }
 
-  @Override
-  protected int getNumRepetitions() {
-    return 1;
-  }
-
-  public void testValidBuiltInTypeRedefinition() throws Exception {
+  @Test
+  public void testValidBuiltInTypeRedefinition() {
     testSame(externs(ALL_NATIVE_EXTERN_TYPES), srcs(""));
   }
 
-  public void testBuiltInTypeDifferentReturnType() throws Exception {
+  @Test
+  public void testBuiltInTypeDifferentReturnType() {
     test(
         externs(
             "/**\n"
@@ -68,11 +72,12 @@ public final class FunctionTypeBuilderTest extends CompilerTestCase {
         warning(FunctionTypeBuilder.TYPE_REDEFINITION)
             .withMessage(
                 "attempted re-definition of type String\n"
-                    + "found   : function(new:String, *=): number\n"
-                    + "expected: function(new:String, *=): string"));
+                    + "found   : (typeof String)\n"
+                    + "expected: (typeof String)"));
   }
 
-  public void testBuiltInTypeDifferentNumParams() throws Exception {
+  @Test
+  public void testBuiltInTypeDifferentNumParams() {
     test(
         externs(
             "/**\n"
@@ -84,11 +89,12 @@ public final class FunctionTypeBuilderTest extends CompilerTestCase {
         warning(FunctionTypeBuilder.TYPE_REDEFINITION)
             .withMessage(
                 "attempted re-definition of type String\n"
-                    + "found   : function(new:String): string\n"
-                    + "expected: function(new:String, *=): string"));
+                    + "found   : (typeof String)\n"
+                    + "expected: (typeof String)"));
   }
 
-  public void testBuiltInTypeDifferentNumParams2() throws Exception {
+  @Test
+  public void testBuiltInTypeDifferentNumParams2() {
     test(
         externs(
             "/**\n"
@@ -100,11 +106,12 @@ public final class FunctionTypeBuilderTest extends CompilerTestCase {
         warning(FunctionTypeBuilder.TYPE_REDEFINITION)
             .withMessage(
                 "attempted re-definition of type String\n"
-                    + "found   : function(new:String, ?=, ?=): string\n"
-                    + "expected: function(new:String, *=): string"));
+                    + "found   : (typeof String)\n"
+                    + "expected: (typeof String)"));
   }
 
-  public void testBuiltInTypeDifferentParamType() throws Exception {
+  @Test
+  public void testBuiltInTypeDifferentParamType() {
     test(
         externs(
             "/**\n"
@@ -116,22 +123,24 @@ public final class FunctionTypeBuilderTest extends CompilerTestCase {
         warning(FunctionTypeBuilder.TYPE_REDEFINITION)
             .withMessage(
                 "attempted re-definition of type String\n"
-                    + "found   : function(new:String, ?=): string\n"
-                    + "expected: function(new:String, *=): string"));
+                    + "found   : (typeof String)\n"
+                    + "expected: (typeof String)"));
   }
 
-  public void testBadFunctionTypeDefinition() throws Exception {
+  @Test
+  public void testBadFunctionTypeDefinition() {
     test(
         externs("/** @constructor */function Function(opt_str) {}\n"),
         srcs(""),
         warning(FunctionTypeBuilder.TYPE_REDEFINITION)
             .withMessage(
                 "attempted re-definition of type Function\n"
-                    + "found   : function(new:Function, ?=): ?\n"
-                    + "expected: function(new:Function, ...*): ?"));
+                    + "found   : (typeof Function)\n"
+                    + "expected: (typeof Function)"));
   }
 
-  public void testInlineJsDoc() throws Exception {
+  @Test
+  public void testInlineJsDoc() {
     test(
         externs("/** @return {number} */ function f(/** string */ x) { return x; }"),
         srcs(""),
@@ -139,7 +148,8 @@ public final class FunctionTypeBuilderTest extends CompilerTestCase {
             .withMessage("inconsistent return type\n" + "found   : string\n" + "required: number"));
   }
 
-  public void testInlineJsDoc2() throws Exception {
+  @Test
+  public void testInlineJsDoc2() {
     test(
         externs(
             "/** @return {T} \n @template T */ "
@@ -150,7 +160,8 @@ public final class FunctionTypeBuilderTest extends CompilerTestCase {
             .withMessage("initializing variable\n" + "found   : number\n" + "required: string"));
   }
 
-  public void testExternSubTypes() throws Exception {
+  @Test
+  public void testExternSubTypes() {
     testSame(externs(ALL_NATIVE_EXTERN_TYPES), srcs(""));
 
     List<FunctionType> subtypes =
@@ -161,7 +172,7 @@ public final class FunctionTypeBuilderTest extends CompilerTestCase {
       String typeName = type.getInstanceType().toString();
       FunctionType typeInRegistry = ((ObjectType) getLastCompiler()
           .getTypeRegistry().getGlobalType(typeName)).getConstructor();
-      assertSame(type, typeInRegistry);
+      assertThat(typeInRegistry).isSameInstanceAs(type);
     }
   }
 }

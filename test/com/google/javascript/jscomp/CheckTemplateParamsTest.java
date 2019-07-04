@@ -18,22 +18,24 @@ package com.google.javascript.jscomp;
 
 import static com.google.javascript.jscomp.RhinoErrorReporter.TOO_MANY_TEMPLATE_PARAMS;
 
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
 /**
  * Tests for the "Too many template parameters" warning. Ideally this would be part of
- * JSDocInfoParserTest but that test is set up to handle warnings reported from JSDocInfoParser,
- * (as strings) not ones from JSTypeRegistry (as DiagnosticTypes).
+ * JSDocInfoParserTest but that test is set up to handle warnings reported from JSDocInfoParser, (as
+ * strings) not ones from JSTypeRegistry (as DiagnosticTypes).
  */
+@RunWith(JUnit4.class)
 public final class CheckTemplateParamsTest extends CompilerTestCase {
 
   @Override
-  protected void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     super.setUp();
     enableTypeCheck();
-  }
-
-  @Override
-  protected int getNumRepetitions() {
-    return 1;
   }
 
   @Override
@@ -43,12 +45,13 @@ public final class CheckTemplateParamsTest extends CompilerTestCase {
   }
 
   @Override
-  protected CompilerOptions getOptions(CompilerOptions options) {
-    super.getOptions(options);
+  protected CompilerOptions getOptions() {
+    CompilerOptions options = super.getOptions();
     options.setWarningLevel(DiagnosticGroups.TOO_MANY_TYPE_PARAMS, CheckLevel.WARNING);
     return options;
   }
 
+  @Test
   public void testArray() {
     testSame("/** @type {!Array} */ var x;");
     testSame("/** @type {!Array<string>} */ var x;");
@@ -57,6 +60,7 @@ public final class CheckTemplateParamsTest extends CompilerTestCase {
         warning(TOO_MANY_TEMPLATE_PARAMS));
   }
 
+  @Test
   public void testObject() {
     testSame("/** @type {!Object} */ var x;");
     testSame("/** @type {!Object<number>} */ var x;");
@@ -66,6 +70,7 @@ public final class CheckTemplateParamsTest extends CompilerTestCase {
         warning(TOO_MANY_TEMPLATE_PARAMS));
   }
 
+  @Test
   public void testClass() {
     testSame("/** @constructor */ function SomeClass() {}; /** @type {!SomeClass} */ var x;");
     test(

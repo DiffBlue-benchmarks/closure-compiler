@@ -15,21 +15,37 @@
  */
 package com.google.javascript.jscomp;
 
+import static com.google.javascript.rhino.testing.TypeSubject.assertType;
+
 import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
+import com.google.javascript.rhino.Node;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /** Test cases for {@link RewriteObjectSpread} */
+@RunWith(JUnit4.class)
 public final class RewriteObjectSpreadTest extends CompilerTestCase {
 
   public RewriteObjectSpreadTest() {
-    super(MINIMAL_EXTERNS);
+    super(new TestExternsBuilder().addObject().build());
   }
 
   @Override
-  protected void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     super.setUp();
     setAcceptedLanguage(LanguageMode.ECMASCRIPT_NEXT);
     setLanguageOut(LanguageMode.ECMASCRIPT_2017);
-    enableRunTypeCheckAfterProcessing();
+  }
+
+  @Before
+  public void enableTypeCheckBeforePass() {
+    enableTypeCheck();
+    enableTypeInfoValidation();
+    disableCompareSyntheticCode();
+    allowExternsChanges();
   }
 
   @Override
@@ -37,11 +53,7 @@ public final class RewriteObjectSpreadTest extends CompilerTestCase {
     return new RewriteObjectSpread(compiler);
   }
 
-  @Override
-  protected int getNumRepetitions() {
-    return 1;
-  }
-
+  @Test
   public void testObjectLiteralWithSpread() {
     test("({first, ...spread});", "Object.assign({}, {first}, spread)");
     test("({first, second, ...spread});", "Object.assign({}, {first, second}, spread)");
@@ -54,5 +66,39 @@ public final class RewriteObjectSpreadTest extends CompilerTestCase {
     test(
         "({first, [foo()]: baz(), ...spread});",
         "Object.assign({}, {first, [foo()]: baz()}, spread)");
+  }
+
+  @Test
+  public void testTyping_ofSpreadResult_isObject() {
+    test(
+        lines(
+            "const first = 0;", //
+            "const spread = {bar: 'str', qux: false};",
+            "const obj = ({first, ...spread});"),
+        lines(
+            "const first = 0;", //
+            "const spread = {bar: 'str', qux: false};",
+            "const obj = Object.assign({}, {first}, spread)"));
+
+    Compiler lastCompiler = getLastCompiler();
+
+    Node obj = getNodeMatchingQName(lastCompiler.getJsRoot(), "obj");
+    assertType(obj.getJSType()).toStringIsEqualTo("Object");
+    assertType(obj.getFirstFirstChild().getJSType())
+        .toStringIsEqualTo("function(Object, ...(Object|null)): Object");
+  }
+
+  /** Returns the first node (preorder) in the given AST that matches the given qualified name */
+  private Node getNodeMatchingQName(Node root, String qname) {
+    if (root.matchesQualifiedName(qname)) {
+      return root;
+    }
+    for (Node child : root.children()) {
+      Node result = getNodeMatchingQName(child, qname);
+      if (result != null) {
+        return result;
+      }
+    }
+    return null;
   }
 }

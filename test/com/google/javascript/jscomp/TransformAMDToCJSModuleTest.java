@@ -16,20 +16,19 @@
 
 package com.google.javascript.jscomp;
 
-/**
- * Unit tests for {@link TransformAMDToCJSModule}
- */
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+/** Unit tests for {@link TransformAMDToCJSModule} */
+@RunWith(JUnit4.class)
 public final class TransformAMDToCJSModuleTest extends CompilerTestCase {
 
   @Override protected CompilerPass getProcessor(Compiler compiler) {
     return new TransformAMDToCJSModule(compiler);
   }
 
-  @Override
-  protected int getNumRepetitions() {
-    return 1;
-  }
-
+  @Test
   public void testDefine() {
     test("define(['foo', 'bar'], function(foo, bar) { foo(bar); bar+1; })",
         "var foo=require('foo'); var bar=require('bar');foo(bar);bar+1");
@@ -57,6 +56,7 @@ public final class TransformAMDToCJSModuleTest extends CompilerTestCase {
         "var test=require('foo'); require('bar'); module.exports={test:1}");
   }
 
+  @Test
   public void testVarRenaming() {
     final String suffix = TransformAMDToCJSModule.VAR_RENAME_SUFFIX;
     test("var foo; define(['foo', 'bar'], function(foo, bar) { " +
@@ -69,6 +69,7 @@ public final class TransformAMDToCJSModuleTest extends CompilerTestCase {
         "var bar=require('bar');foo" + suffix +"0(bar);bar+1");
   }
 
+  @Test
   public void testDefineOnlyFunction() {
     test("define(function() { return { test: 1 } })",
         "module.exports={test:1}");
@@ -76,10 +77,12 @@ public final class TransformAMDToCJSModuleTest extends CompilerTestCase {
         "module.exports={test:1}");
   }
 
+  @Test
   public void testObjectLit() {
     test("define({foo: 'bar'})", "module.exports={foo: 'bar'}");
   }
 
+  @Test
   public void testPlugins() {
     test(
         "define(['foo', 'text!foo'], function(foo, text) {})",
@@ -95,6 +98,7 @@ public final class TransformAMDToCJSModuleTest extends CompilerTestCase {
         warning(TransformAMDToCJSModule.REQUIREJS_PLUGINS_NOT_SUPPORTED_WARNING));
   }
 
+  @Test
   public void testUnsupportedForms() {
     testUnsupported("define()");
     testUnsupported("define([], function() {}, 1)");
@@ -107,6 +111,7 @@ public final class TransformAMDToCJSModuleTest extends CompilerTestCase {
     testNonTopLevelDefine("if(define(function() {})) {}");
   }
 
+  @Test
   public void testLocalDefine() {
     testSame("(function() { function define() {}; define({}); })()");
   }
