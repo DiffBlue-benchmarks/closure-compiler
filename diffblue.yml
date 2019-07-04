@@ -1,0 +1,806 @@
+buildCmd: mvn -e -X -Dlicense.skip=true -Dmaven.enforcer.skip=true  -Denforcer.skip=true -Dair.check.skip-all=true -Dmaven.test.skip=true compile
+testCmd: true
+skipVerification: true
+cbmcArguments:
+  # Do not generate coverage comments on generated tests.
+  java-generate-no-comments: true
+  # Constrain the size of arrays created in the analyzed code.
+  java-max-vla-length: 100000
+phases:
+  -
+    # Phase 0 PRETTY, SIMPLE and SMART - pretty tests, do not test private methods directly, Smart-Harness
+    timeout: 180
+    cbmcArguments:
+      # Use simple models first containers (ArrayList, HashMap, HashSet,...) will have a maximum size of one.
+      classpath: '/tools/cbmc/models-simple-overlay.jar:/tools/cbmc/models.jar:.'
+      # Set a limit on the number of instructions that can be generated as part of a test trace.
+      depth: 1500
+      # Maximum allowed length for an array passed as test input.
+      max-nondet-array-length: 10
+      # Bound the length of input strings.
+      max-nondet-string-length: 10
+      # Add constraint that strings are printable
+      string-printable: true
+      # Make implicit runtime exceptions explicit.
+      throw-runtime-exceptions: false
+      # Set an upper bound on loop unwinding.
+      unwind: 1
+      # Do not test any methods that have the specified access level.
+      do-not-test-methods-with-access: [private]
+      # Instrument the entry point function only.
+      cover-function-only: false
+      # Instrument the file as opposed to the function only
+      cover-only: file
+      # Set string input value
+      string-input-value: ["foo", "Bar", "BAZ", "1234", "1a 2b 3c", "A1B2C3", "a,b,c", "1", "2", "3", "a/b/c", "a'b'c", ",", "/", "'"]
+      # Instantiate classes using the simplest constructor strategy
+      smart-harness: simplest-constructor-and-nondet
+  -
+    # Phase 1 PRETTY AND COMPLEX - standard models only, pretty tests, do not test private methods directly, input factory
+    timeout: 180
+    cbmcArguments:
+      # Use the standard models library
+      classpath: '/tools/cbmc/models.jar:.'
+      # Set a limit on the number of instructions that can be generated as part of a test trace.
+      depth: false
+      # never initialize reference-typed parameter to the entry point with null
+      java-assume-inputs-non-null: true
+      # Maximum allowed length for an array passed as test input.
+      max-nondet-array-length: 10
+      # Bound the length of input strings.
+      max-nondet-string-length: 10
+      # Add constraint that strings are printable
+      string-printable: true
+      # Set string input value
+      string-input-value: ["foo", "Bar", "BAZ", "1234", "1a 2b 3c", "A1B2C3", "a,b,c", "1", "2", "3", "a/b/c", "a'b'c", ",", "/", "'"]
+      # Make implicit runtime exceptions explicit.
+      throw-runtime-exceptions: false
+      # Set an upper bound on loop unwinding.
+      unwind: 2
+      # Do not test any methods that have the specified access level.
+      do-not-test-methods-with-access: [private]
+      # Instrument the entry point function only.
+      cover-function-only: false
+      # instrument the file as opposed to the function only
+      cover-only: file
+      # Limit input factory recursive depth (default 0 = no recursion allowed)
+      java-test-input-factory-bmc-recursion-limit: 4
+  -
+    # Phase 2 FIFO Strategy - pretty tests, do not test private methods directly, fifo
+    timeout: 100
+    cbmcArguments:
+      # Use the standard models library
+      classpath: '/tools/cbmc/models.jar:.'
+      # Set a limit on the number of instructions that can be generated as part of a test trace.
+      depth: false
+      # never initialize reference-typed parameter to the entry point with null
+      java-assume-inputs-non-null: true
+      # Maximum allowed length for an array passed as test input.
+      max-nondet-array-length: 30
+      # Add constraint that strings are printable
+      max-nondet-string-length: 100
+      # Explores the program tree breadth-first.
+      paths: fifo
+      # Set string input value
+      string-input-value: ["foo", "Bar", "BAZ", "1234", "1a 2b 3c", "A1B2C3", "a,b,c", "1", "2", "3", "a/b/c", "a'b'c", ",", "/", "'"]
+      # Add constraint that strings are printable
+      string-printable: true
+      # Make implicit runtime exceptions explicit.
+      throw-runtime-exceptions: false
+      # Set an upper bound on loop unwinding.
+      unwind: false
+      # Do not test any methods that have the specified access level.
+      do-not-test-methods-with-access: [private]
+      # Instrument the entry point function only.
+      cover-function-only: false
+      # instrument the file as opposed to the function only
+      cover-only: file
+  -
+    # Phase 3 Exceptions - do not test private methods directly
+    timeout: 180
+    cbmcArguments:
+      # Use simple models containers first (ArrayList, HashMap, HashSet,...) will have a maximum size of one.
+      classpath: '/tools/cbmc/models-simple-overlay.jar:/tools/cbmc/models.jar:.'
+      # Set a limit on the number of instructions that can be generated as part of a test trace.
+      depth: false
+      # Maximum allowed length for an array passed as test input.
+      max-nondet-array-length: 30
+      # Bound the length of input strings.
+      max-nondet-string-length: 30
+      # Add constraint that strings are printable
+      string-printable: false
+      # Make implicit runtime exceptions explicit.
+      throw-runtime-exceptions: true
+      # Set an upper bound on loop unwinding.
+      unwind: 3
+      # Do not test any methods that have the specified access level.
+      do-not-test-methods-with-access: [private]
+      # Instrument the entry point function only.
+      cover-function-only: false
+      # instrument the file as opposed to the function only
+      cover-only: file
+  -
+    # Phase 4 Direct testing - test private methods directly, increased reflection
+    timeout: 180
+    cbmcArguments:
+      # Use simple models containers first (ArrayList, HashMap, HashSet,...) will have a maximum size of one.
+      classpath: '/tools/cbmc/models-simple-overlay.jar:/tools/cbmc/models.jar:.'
+      # Set a limit on the number of instructions that can be generated as part of a test trace.
+      depth: 1500
+      # never initialize reference-typed parameter to the entry point with null
+      java-assume-inputs-non-null: true
+      # Maximum allowed length for an array passed as test input.
+      max-nondet-array-length: 10
+      # Bound the length of input strings.
+      max-nondet-string-length: 10
+      # Add constraint that strings are printable
+      string-printable: true
+      # Make implicit runtime exceptions explicit.
+      throw-runtime-exceptions: false
+      # Set an upper bound on loop unwinding.
+      unwind: 1
+      # Set string input value
+      string-input-value: ["foo", "Bar", "BAZ", "1234", "1a 2b 3c", "A1B2C3", "a,b,c", "1", "2", "3", "a/b/c", "a'b'c", ",", "/", "'"]
+      # If the logs contain output of the following then proceed to phase X
+    nextPhase:
+      # If the function is not analysable then do not pass onto the next phase
+      not_analyzed: null
+  -
+    # PHASE 5 Mocking - aggressive mocking, do not test private methods directly
+    timeout: 180
+    cbmcArguments:
+      # Use simple models containers first (ArrayList, HashMap, HashSet,...) will have a maximum size of one.
+      classpath: '/tools/cbmc/models-simple-overlay.jar:/tools/cbmc/models.jar:.'
+      # Set a limit on the number of instructions that can be generated as part of a test trace.
+      depth: 3000
+      # never initialize reference-typed parameter to the entry point with null
+      java-assume-inputs-non-null: true
+      # Only load the class (and related inner/outer classes) containing the method under test,
+      load-containing-class-only: true
+      # Maximum allowed length for an array passed as test input.
+      max-nondet-array-length: 30
+      # Bound the length of input strings.
+      max-nondet-string-length: 100
+      # Add constraint that strings are printable
+      string-printable: false
+      # Make implicit runtime exceptions explicit.
+      throw-runtime-exceptions: true
+      # Set an upper bound on loop unwinding.
+      unwind: 3
+      # Do not test any methods that have the specified access level.
+      do-not-test-methods-with-access: [private]
+      # Instrument the entry point function only.
+      cover-function-only: false
+      # instrument the file as opposed to the function only
+      cover-only: file
+units:
+ - target:
+   - dir: target/classes
+     file: com/google/javascript/jscomp/deps/ModuleNames.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/deps/ModuleNames.java
+ - target:
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CodeGenerator.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CodeGenerator.java
+   - dir: target/classes
+     file: com/google/debugging/sourcemap/proto/Mapping$OriginalMapping.class
+     sourceDir: target/classes
+     sourceFile: com/google/debugging/sourcemap/proto/Mapping.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node$PropListItem.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSDocInfo.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSDocInfo.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/AutoValue_DependencyOptions.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/AutoValue_DependencyOptions.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/ComposeWarningsGuard.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/ComposeWarningsGuard.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CodePrinter$CompactCodePrinter.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CodePrinter.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CodePrinter$Builder$1.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CodePrinter.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/SourceMap$LocationMapping.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/SourceMap.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node$SiblingNodeIterable.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/DefaultNameGenerator$CharPriority.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/DefaultNameGenerator.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/StaticSourceFile.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/StaticSourceFile.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CodeGenerator$Context.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CodeGenerator.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CodePrinter$PrettyCodePrinter.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CodePrinter.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/ComposeWarningsGuard$GuardComparator.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/ComposeWarningsGuard.java
+   - dir: target/classes
+     file: com/google/debugging/sourcemap/SourceMapGenerator.class
+     sourceDir: target/classes
+     sourceFile: com/google/debugging/sourcemap/SourceMapGenerator.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CodePrinter$Format.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CodePrinter.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/DependencyOptions.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/DependencyOptions.java
+   - dir: target/classes
+     file: com/google/debugging/sourcemap/Util.class
+     sourceDir: target/classes
+     sourceFile: com/google/debugging/sourcemap/Util.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/DefaultNameGenerator.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/DefaultNameGenerator.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CodePrinter.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CodePrinter.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/WarningsGuard.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/WarningsGuard.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CodeConsumer.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CodeConsumer.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/JSType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/JSType.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CodePrinter$Builder$CodeGeneratorFactory.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CodePrinter.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/JSDocInfoPrinter.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/JSDocInfoPrinter.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/SourceMap.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/SourceMap.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/OutputCharsetEncoder.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/OutputCharsetEncoder.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CodePrinter$Builder.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CodePrinter.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil$MatchNodeType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSIdentifier.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSIdentifier.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node$Prop.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSDocInfo$LazilyInitializedInfo.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSDocInfo.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CompilerOptions.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CompilerOptions.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/debugging/sourcemap/FilePosition.class
+     sourceDir: target/classes
+     sourceFile: com/google/debugging/sourcemap/FilePosition.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/SourceFileMapping.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/SourceFileMapping.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSDocInfo$LazilyInitializedDocumentation.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSDocInfo.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSTypeExpression.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSTypeExpression.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/FeatureSet.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/FeatureSet.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CompilerOptions$LanguageMode.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CompilerOptions.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/TokenStream.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/TokenStream.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CodePrinter$MappedCodePrinter.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CodePrinter.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Token.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Token.java
+ - target:
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/FeatureSet.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/FeatureSet.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/FeatureSet$Feature.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/FeatureSet.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/FeatureSet$LangVersion.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/FeatureSet.java
+ - target:
+   - dir: target/classes
+     file: com/google/javascript/jscomp/XtbMessageBundle.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/XtbMessageBundle.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/util/format/SimpleFormat$FormatSpecifierParser.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/util/format/SimpleFormat.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/util/format/IllegalFormatWidthException.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/util/format/IllegalFormatWidthException.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/util/format/UnknownFormatConversionException.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/util/format/UnknownFormatConversionException.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/util/format/SimpleFormat.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/util/format/SimpleFormat.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/util/format/IllegalFormatFlagsException.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/util/format/IllegalFormatFlagsException.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/XtbMessageBundle$Handler.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/XtbMessageBundle.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/util/format/MissingFormatWidthException.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/util/format/MissingFormatWidthException.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/util/format/MissingFormatArgumentException.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/util/format/MissingFormatArgumentException.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/XtbMessageBundle$SecureEntityResolver.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/XtbMessageBundle.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/JsMessage$IdGenerator.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/JsMessage.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/util/format/SimpleFormat$FormatToken.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/util/format/SimpleFormat.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/GoogleJsMessageIdGenerator.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/GoogleJsMessageIdGenerator.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/util/format/IllegalFormatCodePointException.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/util/format/IllegalFormatCodePointException.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/util/format/IllegalFormatPrecisionException.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/util/format/IllegalFormatPrecisionException.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/JsMessage.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/JsMessage.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/util/format/IllegalFormatConversionException.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/util/format/IllegalFormatConversionException.java
+ - target:
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/ScopeCreator.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/ScopeCreator.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/TemplateTypeMapReplacer.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/TemplateTypeMapReplacer.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil$4.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/UnionType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/UnionType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/InputId.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/InputId.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node$PropListItem.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSDocInfo.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSDocInfo.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/UnionTypeBuilder.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/UnionTypeBuilder.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/ObjectType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/ObjectType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node$AncestorIterable$1.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil$2.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeTraversal.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeTraversal.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/FunctionParamBuilder.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/FunctionParamBuilder.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/TokenStream.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/TokenStream.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/IR.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/IR.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node$SiblingNodeIterable.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/ArrowType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/ArrowType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/FunctionType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/FunctionType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/ProxyObjectType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/ProxyObjectType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/StaticSourceFile.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/StaticSourceFile.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node$NumberNode.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil$1.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSDocInfo$StringPosition.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSDocInfo.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSDocInfo$TypePosition.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSDocInfo.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/Property$OwnedProperty.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/Property.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/Es6SyntacticScopeCreator.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/Es6SyntacticScopeCreator.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/AbstractVar.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/AbstractVar.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/StaticTypedSlot.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/StaticTypedSlot.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/JSType$MatchCache.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/JSType.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/AbstractScope.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/AbstractScope.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil$ValueType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/Property.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/Property.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/JSType$EqCache.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/JSType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/ModificationVisitor.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/ModificationVisitor.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/AbstractScope$ImplicitVar.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/AbstractScope.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/Es6SyntacticScopeCreator$DefaultScopeFactory.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/Es6SyntacticScopeCreator.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/InstanceObjectType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/InstanceObjectType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/RecordTypeBuilder$RecordProperty.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/RecordTypeBuilder.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/JSType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/JSType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSIdentifier.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSIdentifier.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/JSTypeRegistry.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/JSTypeRegistry.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil$TemplateArgsIterable.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/FunctionType$Builder.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/FunctionType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/SourcePosition.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/SourcePosition.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/RecordType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/RecordType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/ObjectType$PropertyOptionality.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/ObjectType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/NamedType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/NamedType.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/ReferenceCollectingCallback.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/ReferenceCollectingCallback.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/FeatureSet$Feature.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/FeatureSet.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/JSType$MatchStatus.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/JSType.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/Scope.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/Scope.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/TernaryValue.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/TernaryValue.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/JSType$ImplCache$Key.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/JSType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/PrototypeObjectType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/PrototypeObjectType.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil$MatchNameNode.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/dtoa/DToA.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/dtoa/DToA.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/TemplatizedType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/TemplatizedType.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil$Visitor.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/PropertyMap.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/PropertyMap.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil$MatchNodeType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node$AncestorIterable.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node$StringNode.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/EnumElementType.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/EnumElementType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node$Prop.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSDocInfo$LazilyInitializedInfo.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSDocInfo.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/RecordTypeBuilder.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/RecordTypeBuilder.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/TemplateTypeMap.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/TemplateTypeMap.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Token.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Token.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil$VarCollector.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeTraversal$Callback.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeTraversal.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node$IntPropListItem.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSDocInfoBuilder.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSDocInfoBuilder.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/JSType$EqCache$Key.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/JSType.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSDocInfo$Marker.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSDocInfo.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSDocInfo$LazilyInitializedDocumentation.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSDocInfo.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSTypeExpression.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSTypeExpression.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/jstype/JSType$ImplCache.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/jstype/JSType.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeTraversal$ScopedCallback.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeTraversal.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/parsing/parser/FeatureSet.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/parsing/parser/FeatureSet.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CodingConvention.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CodingConvention.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/CompilerOptions$LanguageMode.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/CompilerOptions.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/TokenUtil.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/TokenUtil.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/AbstractCompiler.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/AbstractCompiler.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node$ObjectPropListItem.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/Node.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/Node.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSDocInfo$NamePosition.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSDocInfo.java
+   - dir: target/classes
+     file: com/google/javascript/jscomp/NodeUtil$3.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/jscomp/NodeUtil.java
+ - target:
+   - dir: target/classes
+     file: com/google/javascript/rhino/TokenStream.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/TokenStream.java
+   - dir: target/classes
+     file: com/google/javascript/rhino/JSIdentifier.class
+     sourceDir: target/classes
+     sourceFile: com/google/javascript/rhino/JSIdentifier.java
